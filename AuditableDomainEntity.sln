@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuditableDomainEntity", "AuditableDomainEntity.csproj", "{1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuditableDomainEntity.Tests", "AuditableDomainEntity.Tests\AuditableDomainEntity.Tests.csproj", "{7E25E8F9-F442-4317-B947-B4E382C9D01F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7E25E8F9-F442-4317-B947-B4E382C9D01F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7E25E8F9-F442-4317-B947-B4E382C9D01F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7E25E8F9-F442-4317-B947-B4E382C9D01F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7E25E8F9-F442-4317-B947-B4E382C9D01F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
