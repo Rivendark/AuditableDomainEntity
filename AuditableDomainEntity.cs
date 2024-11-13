@@ -1,4 +1,5 @@
 ﻿using AuditableDomainEntity.Interfaces;
+using System.Reflection;
 
 namespace AuditableDomainEntity;
 
@@ -22,16 +23,12 @@ public abstract class AuditableDomainEntity
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
-            foreach (var attribute in property.GetCustomAttributes(true))
-            {
-                if (attribute is not AuditableFieldAttribute<T> attributeProperty) continue;
-                
-                InitializeField<T>(attributeProperty.Field);
-                attributeProperty.Field.FieldValue = value;
-                RecordDomainEvent<T>(attributeProperty.Field);
+            var auditableDomainField = GetAuditableDomainField<T>(property, EntityId);
+            InitializeField<T>(auditableDomainField);
+            auditableDomainField.FieldValue = value;
+            RecordDomainEvent<T>(auditableDomainField);
                     
-                return;
-            }
+            return;
         }
 
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
@@ -43,13 +40,7 @@ public abstract class AuditableDomainEntity
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
-            foreach (var attribute in property.GetCustomAttributes(true))
-            {
-                if (attribute is AuditableFieldAttribute<T> attributeProperty)
-                {
-                    return attributeProperty.Field.FieldValue;
-                }
-            }
+            return GetAuditableDomainField<T>(property, EntityId).FieldValue;
         }
 
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
@@ -99,9 +90,47 @@ public abstract class AuditableDomainEntity
         return events;
     }
 
-    private static IEnumerable<IDomainEvent> GetEventsFromAttribute<T>(Attribute attribute) where T : class, new()
+    private AuditableDomainField<T> GetAuditableDomainField<T>(PropertyInfo property, Ulid entityId)
     {
-        if (attribute is not AuditableFieldAttribute<T> attributeProperty) return [];
-        return attributeProperty.Field.HasChanges() ? attributeProperty.Field.GetChanges() : [];
+        if (!_propertyIds.TryGetValue(property.Name, out var fieldId))
+        {
+            fieldId = Ulid.NewUlid();
+            _propertyIds.Add(property.Name, fieldId);
+        }
+            
+        if (!_domainFields.TryGetValue(fieldId, out var field))
+        {
+            AuditableDomainField<T> auditableDomainField;
+            var attribute = property.GetCustomAttribute<AuditableFieldAttribute<T>>();
+            if (attribute != null)
+            {
+                if (attribute.IsNullable)
+                {
+                    auditableDomainField = new AuditableDomainField<T>(
+                        fieldId,
+                        entityId,
+                        property.Name);
+                }
+                else
+                {
+                    auditableDomainField = new AuditableDomainField<T>(
+                        fieldId,
+                        entityId,
+                        property.Name,
+                        attribute.DefaultValue);
+                }
+            }
+            else
+            {
+                auditableDomainField = new AuditableDomainField<T>(
+                    fieldId,
+                    entityId,
+                    property.Name);
+            }
+            
+            return auditableDomainField;
+        }
+        
+        return (AuditableDomainField<T>)field;
     }
 }

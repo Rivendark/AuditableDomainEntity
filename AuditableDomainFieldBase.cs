@@ -42,6 +42,19 @@ public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
         Name = name;
         Type = type;
     }
+    
+    protected AuditableDomainFieldBase(
+        Ulid fieldId,
+        Ulid entityId,
+        string name,
+        AuditableDomainFieldType type)
+    {
+        FieldType = typeof(T);
+        FieldId = fieldId;
+        EntityId = entityId;
+        Name = name;
+        Type = type;
+    }
 
     protected AuditableDomainFieldBase(
         Ulid fieldId,

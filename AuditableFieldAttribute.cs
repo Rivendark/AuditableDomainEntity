@@ -7,14 +7,12 @@ namespace AuditableDomainEntity;
 public sealed class AuditableFieldAttribute<T> : Attribute
 {
     private Type FieldType { get; }
-    private T? DefaultValue { get; }
+    public T? DefaultValue { get; }
     public bool IsNullable { get; }
-    public AuditableDomainField<T> Field { get; private set; }
 
     public AuditableFieldAttribute(string fieldName)
     {
         FieldType = typeof(T);
-        Field = new AuditableDomainField<T>(fieldName);
     }
 
     public AuditableFieldAttribute(string fieldName, T? defaultValue) : this(fieldName)
@@ -31,10 +29,5 @@ public sealed class AuditableFieldAttribute<T> : Attribute
     {
         DefaultValue = defaultValue;
         IsNullable = isNullable;
-    }
-
-    public void Hydrate(List<IDomainFieldEvent> events)
-    {
-        Field = new AuditableDomainField<T>(events);
     }
 }
