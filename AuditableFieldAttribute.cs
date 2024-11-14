@@ -4,7 +4,7 @@
 namespace AuditableDomainEntity;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-public sealed class AuditableFieldAttribute<T> : Attribute
+public sealed class AuditableFieldAttribute<T> : Attribute, IAuditableFieldAttribute
 {
     private Type FieldType { get; }
     public T? DefaultValue { get; }

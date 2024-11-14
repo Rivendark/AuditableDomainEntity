@@ -2,5 +2,5 @@
 
 public interface IDomainEntityEvent : IDomainEvent
 {
-    
+    public List<IDomainFieldEvent> DomainFieldEvents { get; init; }
 }

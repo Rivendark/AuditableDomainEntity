@@ -5,8 +5,20 @@ namespace AuditableDomainEntity;
 
 public sealed class AuditableDomainField<T> : AuditableDomainFieldBase<T>
 {
-    public AuditableDomainField(string name)
-        : base(name, AuditableDomainFieldType.Value) { }
+    private bool Equals(AuditableDomainField<T> other)
+    {
+        return Equals(this, other);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return ReferenceEquals(this, obj) || obj is AuditableDomainField<T> other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return base.GetHashCode();
+    }
 
     public AuditableDomainField(Ulid fieldId, Ulid entityId, string name)
         : base(fieldId, entityId, name, AuditableDomainFieldType.Value) { }
@@ -17,9 +29,16 @@ public sealed class AuditableDomainField<T> : AuditableDomainFieldBase<T>
     public AuditableDomainField(Ulid entityId, string name)
         : base(entityId, name, AuditableDomainFieldType.Value) { }
     
-    public AuditableDomainField(Ulid fieldId, Ulid entityId, string name, AuditableDomainFieldType type, T? value)
-        : base(fieldId, entityId, name, type, value) { }
-    
     public AuditableDomainField(List<IDomainFieldEvent> events)
         : base(AuditableDomainFieldType.Value, events) { }
+    
+    public static bool operator ==(AuditableDomainField<T>? left, AuditableDomainField<T>? right)
+    {
+        return Equals(left, right);
+    }
+
+    public static bool operator !=(AuditableDomainField<T>? left, AuditableDomainField<T>? right)
+    {
+        return !Equals(left, right);
+    }
 }

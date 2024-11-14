@@ -1,6 +1,8 @@
-﻿namespace AuditableDomainEntity;
+﻿using AuditableDomainEntity.Interfaces;
 
-public class TestRootEntity : AuditableDomainRootEntity
+namespace AuditableDomainEntity;
+
+public class TestRootEntity : AuditableAggregateRootEntity
 {
     [AuditableField<int?>(nameof(Number), true)]
     public int? Number
@@ -14,5 +16,15 @@ public class TestRootEntity : AuditableDomainRootEntity
     {
         get => GetValue<DateTime?>(nameof(Date));
         set => SetValue<DateTime?>(value, nameof(Date));
+    }
+
+    public TestRootEntity(AggregateRootId aggregateRootId, List<IDomainEvent>? history) : base(aggregateRootId, history)
+    {
+        
+    }
+
+    public TestRootEntity(AggregateRootId aggregateRootId) : base(aggregateRootId)
+    {
+        
     }
 }

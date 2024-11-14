@@ -2,4 +2,4 @@
 
 namespace AuditableDomainEntity;
 
-public record AggregateRootId(Ulid Value, Ulid? ParentId = null);
+public record AggregateRootId(Ulid Value);

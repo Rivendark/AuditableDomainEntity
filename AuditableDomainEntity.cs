@@ -5,28 +5,56 @@ namespace AuditableDomainEntity;
 
 public abstract class AuditableDomainEntity
 {
-    public AggregateRootId Id { get; set; }
-    private Ulid EntityId => Id.Value;
-    private readonly Dictionary<Ulid, List<IDomainEvent>> _domainEventChanges = new ();
-    private readonly Dictionary<Ulid, List<IDomainEvent>> _domainEvents = new();
+    public AggregateRootId Id { get; private init; }
+    public Ulid EntityId { get; init; } = Ulid.NewUlid();
+    
+    private readonly bool _isInitialized;
+    private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _entityChanges = new ();
+    private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _historicalDomainEntityEvents = new();
+    private readonly Dictionary<Ulid, List<IDomainFieldEvent>> _historicalDomainFieldEvents = new();
     private readonly Dictionary<string, Ulid> _propertyIds = new();
-    private readonly Dictionary<Ulid, AuditableDomainFieldRoot> _domainFields = new();
+    private readonly Dictionary<Ulid, AuditableDomainFieldRoot> _auditableEntityFields = new();
 
-    public AuditableDomainEntity()
+    protected AuditableDomainEntity(AggregateRootId aggregateRootId, List<IDomainEvent>? events)
     {
-        // TODO get all AuditableDomainField objects via reflection and add to list
+        // Temp
+        Id = aggregateRootId;
+        if (events == null || events.Count == 0) return;
+        LoadEntityHistory(events);
+        LoadPropertyHistory();
+        _isInitialized = true;
+    }
+
+    protected AuditableDomainEntity(AggregateRootId aggregateRootId)
+    {
+        Id = aggregateRootId;
+        LoadPropertyClean();
+        _isInitialized = true;
+    }
+    
+    public List<IDomainEvent>? GetDomainChanges()
+    {
+        var events = new List<IDomainEvent>();
+        foreach (var fieldEvents in _auditableEntityFields.Values
+                     .Select(fieldChanges => fieldChanges.GetChanges()))
+        {
+            events.AddRange(fieldEvents);
+        }
+        
+        // TODO gather entity events into list as well
+
+        return events;
     }
 
     protected void SetValue<T>(T value, string propertyName)
     {
+        if (!_isInitialized) return;
         var properties = GetType().GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
             var auditableDomainField = GetAuditableDomainField<T>(property, EntityId);
-            InitializeField<T>(auditableDomainField);
             auditableDomainField.FieldValue = value;
-            RecordDomainEvent<T>(auditableDomainField);
                     
             return;
         }
@@ -46,91 +74,79 @@ public abstract class AuditableDomainEntity
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
 
-    private void InitializeField<T>(AuditableDomainField<T> auditableDomainField)
-    {
-        if (!auditableDomainField.IsInitialized())
-        {
-            if (!_propertyIds.ContainsKey(auditableDomainField.Name))
-                _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
-            
-            var fieldId = _propertyIds[auditableDomainField.Name];
-            
-            _domainFields.TryAdd(fieldId, auditableDomainField);
-            
-            if (_domainEventChanges.TryGetValue(fieldId, out var domainEvents))
-            {
-                auditableDomainField.Initialize(fieldId, EntityId, domainEvents);
-                return;
-            }
-            
-            auditableDomainField.Initialize(fieldId, EntityId);
-        }
-    }
-
-    private void RecordDomainEvent<T>(AuditableDomainField<T> auditableDomainField)
-    {
-        if (!auditableDomainField.HasChanges()) return;
-        if (_domainEventChanges.ContainsKey(auditableDomainField.FieldId))
-        {
-            _domainEventChanges[auditableDomainField.FieldId] = auditableDomainField.GetChanges();
-            return;
-        }
-                        
-        _domainEventChanges.TryAdd(auditableDomainField.FieldId, auditableDomainField.GetChanges());
-    }
-
-    public List<IDomainEvent> GetDomainEvents()
-    {
-        var events = new List<IDomainEvent>();
-        foreach (var domainEventsValue in _domainEventChanges.Values)
-        {
-            events.AddRange(domainEventsValue);
-        }
-
-        return events;
-    }
-
     private AuditableDomainField<T> GetAuditableDomainField<T>(PropertyInfo property, Ulid entityId)
     {
         if (!_propertyIds.TryGetValue(property.Name, out var fieldId))
         {
-            fieldId = Ulid.NewUlid();
-            _propertyIds.Add(property.Name, fieldId);
+            throw new InvalidOperationException($"Property {property.Name} is not found in type {GetType().Name}:{nameof(_propertyIds)}");
         }
-            
-        if (!_domainFields.TryGetValue(fieldId, out var field))
+
+        return (AuditableDomainField<T>)_auditableEntityFields[fieldId];
+    }
+    
+    private void LoadEntityHistory(List<IDomainEvent>? events)
+    {
+        if (events == null || events.Count == 0) return;
+        foreach (var domainEvent in events.OrderBy(e => e.EventVersion))
         {
-            AuditableDomainField<T> auditableDomainField;
-            var attribute = property.GetCustomAttribute<AuditableFieldAttribute<T>>();
-            if (attribute != null)
+            switch (domainEvent)
             {
-                if (attribute.IsNullable)
+                case IDomainEntityEvent domainEntityEvent:
                 {
-                    auditableDomainField = new AuditableDomainField<T>(
-                        fieldId,
-                        entityId,
-                        property.Name);
+                    if (!_historicalDomainEntityEvents.ContainsKey(domainEntityEvent.EntityId))
+                        _historicalDomainEntityEvents.TryAdd(domainEntityEvent.EntityId, []);
+                    
+                    _historicalDomainEntityEvents[domainEntityEvent.EntityId].Add(domainEntityEvent);
+                    
+                    // TODO apply event to entity
+                    
+                    break;
                 }
-                else
-                {
-                    auditableDomainField = new AuditableDomainField<T>(
-                        fieldId,
-                        entityId,
-                        property.Name,
-                        attribute.DefaultValue);
-                }
+                case IDomainFieldEvent domainFieldEvent:
+                    if (!_historicalDomainFieldEvents.ContainsKey(domainFieldEvent.FieldId))
+                        _historicalDomainFieldEvents.TryAdd(domainFieldEvent.FieldId, []);
+                    
+                    _historicalDomainFieldEvents[domainFieldEvent.FieldId].Add(domainFieldEvent);
+                    _propertyIds.TryAdd(domainFieldEvent.FieldName, domainFieldEvent.FieldId);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown event type {domainEvent.GetType()}");
             }
-            else
-            {
-                auditableDomainField = new AuditableDomainField<T>(
-                    fieldId,
-                    entityId,
-                    property.Name);
-            }
-            
-            return auditableDomainField;
         }
-        
-        return (AuditableDomainField<T>)field;
+    }
+
+    private void LoadPropertyHistory()
+    {
+        var properties = GetType().GetProperties();
+        foreach (var property in properties)
+        {
+            var attributes = property.GetCustomAttributes();
+            if (!attributes.Any(a => a is IAuditableFieldAttribute)) continue;
+            
+            if (_propertyIds.TryGetValue(property.Name, out var fieldId))
+            {
+                if (_historicalDomainFieldEvents.TryGetValue(fieldId, out var domainEvents))
+                {
+                    var contextType = typeof(AuditableDomainField<>).MakeGenericType(property.PropertyType);
+                    dynamic auditableDomainField = Activator.CreateInstance(contextType, domainEvents)!;
+                    _auditableEntityFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
+                }
+            };
+        }
+    }
+
+    private void LoadPropertyClean()
+    {
+        var properties = GetType().GetProperties();
+        foreach (var property in properties)
+        {
+            var attributes = property.GetCustomAttributes();
+            if (!attributes.Any(a => a is IAuditableFieldAttribute)) continue;
+            
+            var contextType = typeof(AuditableDomainField<>).MakeGenericType(property.PropertyType);
+            dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property.Name)!;
+            _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
+            _auditableEntityFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
+        }
     }
 }

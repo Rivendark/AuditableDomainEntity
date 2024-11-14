@@ -27,7 +27,6 @@
     <ItemGroup>
       <Folder Include="Commands\EntityCommands\" />
       <Folder Include="Commands\FieldCommands\" />
-      <Folder Include="Events\EntityEvents\" />
     </ItemGroup>
 
 </Project>

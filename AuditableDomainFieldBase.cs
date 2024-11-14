@@ -4,15 +4,20 @@ using AuditableDomainEntity.Types;
 
 namespace AuditableDomainEntity;
 
-public abstract class AuditableDomainFieldRoot;
+public abstract class AuditableDomainFieldRoot
+{
+    protected readonly List<IDomainEvent> Changes = [];
+    protected readonly List<IDomainFieldEvent> Events = [];
+    public bool HasChanges() => Changes.Count > 0;
+    public List<IDomainEvent> GetChanges() => Changes;
+};
 
 public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
 {
-    private readonly List<IDomainEvent> _changes = [];
     public Ulid FieldId { get; private set; }
-    public Ulid EntityId { get; private set; }
+    private Ulid EntityId { get; set; }
     public AuditableDomainFieldType Type { get; init; }
-    public AuditableDomainFieldStatus Status { get; private set; } = AuditableDomainFieldStatus.Created;
+    private AuditableDomainFieldStatus Status { get; set; } = AuditableDomainFieldStatus.Created;
     public string Name { get; init; }
     private int _version = 0;
     private T? _value;
@@ -23,14 +28,37 @@ public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
     }
     public Type? FieldType { get; init; }
 
-    protected AuditableDomainFieldBase(string name, AuditableDomainFieldType type)
+    protected static bool Equals(AuditableDomainFieldBase<T>? left, AuditableDomainFieldBase<T>? right)
     {
-        FieldId = Ulid.NewUlid();
-        FieldType = typeof(T);
-        Name = name;
-        Type = type;
+        if (left is null ^ right is null) return false;
+        if (ReferenceEquals(left, right)) return true;
+
+        return left!._version == right!._version
+               && EqualityComparer<T?>.Default.Equals(left._value, right._value)
+               && left.FieldId.Equals(right.FieldId)
+               && left.EntityId.Equals(right.EntityId)
+               && left.Type == right.Type
+               && left.Status == right.Status
+               && left.Name == right.Name
+               && left.FieldType == right.FieldType;
     }
-    
+
+    public override int GetHashCode()
+    {
+        unchecked
+        {
+            var hashCode = _version;
+            hashCode = (hashCode * 397) ^ EqualityComparer<T?>.Default.GetHashCode(_value);
+            hashCode = (hashCode * 397) ^ FieldId.GetHashCode();
+            hashCode = (hashCode * 397) ^ EntityId.GetHashCode();
+            hashCode = (hashCode * 397) ^ (int)Type;
+            hashCode = (hashCode * 397) ^ (int)Status;
+            hashCode = (hashCode * 397) ^ Name.GetHashCode();
+            hashCode = (hashCode * 397) ^ (FieldType != null ? FieldType.GetHashCode() : 0);
+            return hashCode;
+        }
+    }
+
     protected AuditableDomainFieldBase(
         Ulid entityId,
         string name,
@@ -77,16 +105,22 @@ public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
         
         if (initializedEvent is null)
             throw new ArgumentException($"Failed to find auditable domain field initialized event for type {type}");
+        domainEvents.Remove(initializedEvent);
         
         var iEvent = initializedEvent as AuditableFieldInitialized<T>;
 
         FieldId = iEvent!.FieldId;
         FieldType = typeof(T);
-        EntityId = iEvent.FieldId;
+        EntityId = iEvent.EntityId;
         Name = iEvent.FieldName;
         Type = type;
+        _value = iEvent.InitialValue;
+        _version = iEvent.EventVersion;
         
-        Hydrate(domainEvents);
+        if (domainEvents.Any())
+            Hydrate(domainEvents);
+
+        Status = AuditableDomainFieldStatus.Initialized;
     }
 
     private void Hydrate(IEnumerable<IDomainEvent> domainEvents)
@@ -102,47 +136,25 @@ public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
         switch (domainEvent.GetType())
         {
             case AuditableFieldInitialized<T> auditableFieldInitialized:
+                FieldId = auditableFieldInitialized!.FieldId;
                 EntityId = auditableFieldInitialized.EntityId;
-                FieldId = auditableFieldInitialized.FieldId;
                 _value = auditableFieldInitialized.InitialValue;
+                _version = auditableFieldInitialized.EventVersion;
                 break;
             
             case AuditableFieldUpdated<T> auditableFieldUpdated:
                 _value = auditableFieldUpdated.NewValue;
+                _version = auditableFieldUpdated.EventVersion;
                 break;
         }
     }
-
-    public void Initialize(Ulid id, Ulid entityId)
-    {
-        FieldId = id;
-        EntityId = entityId;
-        Status = AuditableDomainFieldStatus.Initialized;
-    }
-
-    public void Initialize(Ulid id, Ulid entityId, List<IDomainEvent> domainEvents)
-    {
-        FieldId = id;
-        EntityId = entityId;
-        _changes.AddRange(domainEvents);
-        Status = AuditableDomainFieldStatus.Initialized;
-    }
-
-    public bool IsInitialized()
-    {
-        return Status != AuditableDomainFieldStatus.Created;
-    }
-    
-    public bool HasChanges() => _changes.Count > 0;
-    
-    public List<IDomainEvent> GetChanges() => _changes;
 
     private void ApplyValue(T? value)
     {
         if (_value is null && value is null) return;
         if (_value is null && value is not null)
         {
-            _changes.Add(new AuditableFieldInitialized<T>(
+            Changes.Add(new AuditableFieldInitialized<T>(
                 Ulid.NewUlid(),
                 FieldId,
                 EntityId,
@@ -156,7 +168,7 @@ public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
         
         if (_value is not null && _value.Equals(value)) return;
         
-        _changes.Add(new AuditableFieldUpdated<T>(
+        Changes.Add(new AuditableFieldUpdated<T>(
             Ulid.NewUlid(),
             FieldId,
             EntityId,
