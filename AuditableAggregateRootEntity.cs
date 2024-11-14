@@ -5,7 +5,8 @@ namespace AuditableDomainEntity;
 public abstract class AuditableAggregateRootEntity : AuditableDomainEntity
 {
     public new Ulid EntityId => Id.Value;
-    protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId, List<IDomainEvent>? events)
+    private readonly List<IDomainEntityEvent> _events = new();
+    protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId, List<IDomainEntityEvent>? events)
         : base(aggregateRootId, events) { }
     
     protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId)

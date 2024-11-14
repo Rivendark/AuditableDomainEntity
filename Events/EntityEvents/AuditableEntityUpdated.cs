@@ -2,14 +2,14 @@
 
 namespace AuditableDomainEntity.Events.EntityEvents;
 
-public record AuditableEntityCreated(
+public record AuditableEntityUpdated(
     AggregateRootId Id,
     Ulid EventId,
     Ulid EntityId,
     Ulid? FieldId,
     Ulid? ParentId,
     int EventVersion,
-    List<IDomainFieldEvent>? FieldEvents,
     List<IDomainEntityEvent>? EntityFieldEvents,
-    DateTimeOffset CreatedAtUtc
-    ): IDomainEntityEvent;
+    List<IDomainFieldEvent> FieldEvents,
+    DateTimeOffset CreatedAtUtc)
+    : IDomainEntityEvent;

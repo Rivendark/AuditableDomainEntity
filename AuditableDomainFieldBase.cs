@@ -4,19 +4,11 @@ using AuditableDomainEntity.Types;
 
 namespace AuditableDomainEntity;
 
-public abstract class AuditableDomainFieldRoot
-{
-    protected readonly List<IDomainEvent> Changes = [];
-    protected readonly List<IDomainFieldEvent> Events = [];
-    public bool HasChanges() => Changes.Count > 0;
-    public List<IDomainEvent> GetChanges() => Changes;
-};
-
 public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
 {
-    public Ulid FieldId { get; private set; }
-    private Ulid EntityId { get; set; }
-    public AuditableDomainFieldType Type { get; init; }
+    public Ulid FieldId { get; set; }
+    public Ulid EntityId { get; set; }
+    private AuditableDomainFieldType Type { get; init; }
     private AuditableDomainFieldStatus Status { get; set; } = AuditableDomainFieldStatus.Created;
     public string Name { get; init; }
     private int _version = 0;
@@ -82,21 +74,6 @@ public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
         EntityId = entityId;
         Name = name;
         Type = type;
-    }
-
-    protected AuditableDomainFieldBase(
-        Ulid fieldId,
-        Ulid entityId,
-        string name,
-        AuditableDomainFieldType type,
-        T? value)
-    {
-        FieldType = typeof(T);
-        FieldId = fieldId;
-        EntityId = entityId;
-        Name = name;
-        Type = type;
-        FieldValue = value;
     }
 
     protected AuditableDomainFieldBase(AuditableDomainFieldType type, List<IDomainFieldEvent> domainEvents)
@@ -177,7 +154,58 @@ public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
             _value,
             value,
             DateTimeOffset.UtcNow
-            ));
+        ));
+        
+        _value = value;
+    }
+
+    private void ApplyAuditableEntityValue(T? value)
+    {
+        if (_value is null && value is not null)
+        {
+            // Create Entity Added event
+            _value = value;
+            return;
+        }
+
+        if (_value is not null && value is null)
+        {
+            // Create Entity Removed event
+            _value = value;
+            return;
+        }
+
+        _value = value;
+    }
+
+    private void ApplyBaseValue(T? value)
+    {
+        if (_value is null && value is not null)
+        {
+            Changes.Add(new AuditableFieldInitialized<T>(
+                Ulid.NewUlid(),
+                FieldId,
+                EntityId,
+                Name,
+                ++_version,
+                value,
+                DateTimeOffset.UtcNow));
+            _value = value;
+            return;
+        }
+        
+        if (_value is not null && _value.Equals(value)) return;
+        
+        Changes.Add(new AuditableFieldUpdated<T>(
+            Ulid.NewUlid(),
+            FieldId,
+            EntityId,
+            Name,
+            ++_version,
+            _value,
+            value,
+            DateTimeOffset.UtcNow
+        ));
         
         _value = value;
     }

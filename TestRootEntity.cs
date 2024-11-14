@@ -18,7 +18,7 @@ public class TestRootEntity : AuditableAggregateRootEntity
         set => SetValue<DateTime?>(value, nameof(Date));
     }
 
-    public TestRootEntity(AggregateRootId aggregateRootId, List<IDomainEvent>? history) : base(aggregateRootId, history)
+    public TestRootEntity(AggregateRootId aggregateRootId, List<IDomainEntityEvent>? history) : base(aggregateRootId, history)
     {
         
     }
