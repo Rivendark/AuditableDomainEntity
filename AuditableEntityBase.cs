@@ -4,25 +4,19 @@ using System.Reflection;
 
 namespace AuditableDomainEntity;
 
-public abstract partial class AuditableDomainEntity
+public abstract partial class AuditableEntityBase
 {
-    public AggregateRootId Id { get; private init; }
     public Ulid EntityId { get; init; } = Ulid.NewUlid();
-    
     private readonly bool _isInitialized;
     private bool _isDirty;
     private int _version;
-    private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _entityChanges = new();
     private readonly Dictionary<string, Ulid> _propertyIds = new();
     private readonly Dictionary<Ulid, AuditableDomainFieldRoot> _auditableEntityFields = new();
 
-    protected AuditableDomainEntity(AggregateRootId aggregateRootId)
+    protected AuditableEntityBase(Ulid entityId)
     {
-        ValidateAggregateRootId(aggregateRootId);
-        
-        Id = aggregateRootId;
-        
-        LoadPropertyClean();
+        EntityId = entityId;
+        InitializeNewProperties();
         _isInitialized = true;
     }
 
@@ -70,7 +64,7 @@ public abstract partial class AuditableDomainEntity
         switch (domainEvent)
         {
             case AuditableEntityCreated auditableEntityCreated:
-                // TODO
+                
                 break;
             case AuditableEntityDeleted auditableEntityDeleted:
                 // TODO
@@ -81,27 +75,7 @@ public abstract partial class AuditableDomainEntity
         }
     }
 
-    private void LoadPropertyHistory()
-    {
-        var properties = GetType().GetProperties();
-        foreach (var property in properties)
-        {
-            var attributes = property.GetCustomAttributes();
-            if (!attributes.Any(a => a is IAuditableFieldAttribute)) continue;
-            
-            if (_propertyIds.TryGetValue(property.Name, out var fieldId))
-            {
-                if (_fieldEvents.TryGetValue(fieldId, out var domainEvents))
-                {
-                    var contextType = typeof(AuditableDomainValueField<>).MakeGenericType(property.PropertyType);
-                    dynamic auditableDomainField = Activator.CreateInstance(contextType, domainEvents)!;
-                    _auditableEntityFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
-                }
-            }
-        }
-    }
-
-    private void LoadPropertyClean()
+    private void InitializeNewProperties()
     {
         var properties = GetType().GetProperties();
         foreach (var property in properties)
@@ -116,7 +90,7 @@ public abstract partial class AuditableDomainEntity
         }
     }
 
-    private void ValidateAggregateRootId(AggregateRootId aggregateRootId)
+    protected void ValidateAggregateRootId(AggregateRootId aggregateRootId)
     {
         if ((GetType().DeclaringType ?? GetType()) != aggregateRootId.EntityType)
         {
@@ -124,7 +98,7 @@ public abstract partial class AuditableDomainEntity
         }
     }
     
-    private List<IDomainEntityEvent> GetEntityChanges()
+    public List<IDomainEntityEvent> GetEntityChanges()
     {
         var events = new List<IDomainEntityEvent>();
         foreach (var entityEvents in _entityChanges.Values)

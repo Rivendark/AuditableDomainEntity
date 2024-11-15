@@ -1,3 +1,5 @@
+using AuditableDomainEntity.Events.EntityEvents;
+
 namespace AuditableDomainEntity.Tests;
 
 public class AuditableFieldTests
@@ -11,8 +13,8 @@ public class AuditableFieldTests
             Number = 3,
             Date = new DateTime(2021, 12, 10)
         };
-
-        var changes = testClass.Save();
+        testClass.Save();
+        var changes = testClass.GetEntityChanges();
         
         Assert.NotNull(changes);
         Assert.NotEmpty(changes);
@@ -30,16 +32,25 @@ public class AuditableFieldTests
         
         testClass.Number = 4;
         
-        var updatedChanges = testClass.Save();
+        testClass.Save();
+        var updatedChanges = testClass.GetEntityChanges();
+        
         Assert.NotNull(updatedChanges);
         Assert.NotEmpty(updatedChanges);
-        Assert.Single(updatedChanges);
+        Assert.Equal(2, updatedChanges.Count);
+
+        Assert.IsType<AuditableEntityCreated>(updatedChanges[0]);
         
-        fieldEvents = updatedChanges.Single().FieldEvents;
+        var auditableEntityCreated = (AuditableEntityCreated)updatedChanges[0];
+        Assert.NotNull(auditableEntityCreated);
+        Assert.NotNull(auditableEntityCreated.FieldEvents);
+        Assert.Equal(2, auditableEntityCreated.FieldEvents.Count);
         
-        Assert.NotNull(fieldEvents);
-        Assert.NotEmpty(fieldEvents);
-        Assert.Equal(3, fieldEvents.Count);
+        Assert.IsType<AuditableEntityUpdated>(updatedChanges[1]);
+        var auditableEntityUpdated = (AuditableEntityUpdated)updatedChanges[1];
+        Assert.NotNull(auditableEntityUpdated);
+        Assert.NotNull(auditableEntityUpdated.FieldEvents);
+        Assert.Single(auditableEntityUpdated.FieldEvents);
     }
 
     [Fact]
@@ -52,11 +63,13 @@ public class AuditableFieldTests
             Date = new DateTime(2021, 12, 10),
         };
         
-        var changes = preloadClass.Save();
+        preloadClass.Save();
+        var changes = preloadClass.GetEntityChanges();
+        preloadClass.Commit();
 
         var testClassNew = new TestRootEntity(aggregateRootId, changes);
         
-        var instantiatedChanges = testClassNew.Save();
+        var instantiatedChanges = testClassNew.GetEntityChanges();
         Assert.NotNull(instantiatedChanges);
         Assert.Empty(instantiatedChanges);
         Assert.Equal(preloadClass.Number, testClassNew.Number);
@@ -64,7 +77,8 @@ public class AuditableFieldTests
         
         testClassNew.Number = 4;
         
-        var updatedChanges = testClassNew.Save();
+        testClassNew.Save();
+        var updatedChanges = testClassNew.GetEntityChanges();
         Assert.NotNull(updatedChanges);
         Assert.NotEmpty(updatedChanges);
         Assert.Single(updatedChanges);

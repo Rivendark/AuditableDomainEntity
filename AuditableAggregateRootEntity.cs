@@ -2,13 +2,25 @@
 
 namespace AuditableDomainEntity;
 
-public abstract class AuditableAggregateRootEntity : AuditableDomainEntity
+public abstract class AuditableAggregateRootEntity : AuditableEntityBase
 {
-    public new Ulid EntityId => Id.Value;
-    private readonly List<IDomainEntityEvent> _events = new();
+    public AggregateRootId Id { get; init; }
+
     protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId, List<IDomainEntityEvent>? events)
-        : base(aggregateRootId, events) { }
-    
-    protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId)
-        : base(aggregateRootId) { }
+        : base(aggregateRootId.Value, events)
+    {
+        ValidateAggregateRootId(aggregateRootId);
+        Id = aggregateRootId;
+    }
+
+    protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId) : base(aggregateRootId.Value)
+    {
+        ValidateAggregateRootId(aggregateRootId);
+        Id = aggregateRootId;
+    }
+
+    public void Save()
+    {
+        Save(Id);
+    }
 }

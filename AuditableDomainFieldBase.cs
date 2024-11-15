@@ -20,37 +20,6 @@ public abstract class AuditableDomainFieldBase<T> : AuditableDomainFieldRoot
     }
     public Type? FieldType { get; init; }
 
-    protected static bool Equals(AuditableDomainFieldBase<T>? left, AuditableDomainFieldBase<T>? right)
-    {
-        if (left is null ^ right is null) return false;
-        if (ReferenceEquals(left, right)) return true;
-
-        return left!._version == right!._version
-               && EqualityComparer<T?>.Default.Equals(left._value, right._value)
-               && left.FieldId.Equals(right.FieldId)
-               && left.EntityId.Equals(right.EntityId)
-               && left.Type == right.Type
-               && left.Status == right.Status
-               && left.Name == right.Name
-               && left.FieldType == right.FieldType;
-    }
-
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            var hashCode = _version;
-            hashCode = (hashCode * 397) ^ EqualityComparer<T?>.Default.GetHashCode(_value);
-            hashCode = (hashCode * 397) ^ FieldId.GetHashCode();
-            hashCode = (hashCode * 397) ^ EntityId.GetHashCode();
-            hashCode = (hashCode * 397) ^ (int)Type;
-            hashCode = (hashCode * 397) ^ (int)Status;
-            hashCode = (hashCode * 397) ^ Name.GetHashCode();
-            hashCode = (hashCode * 397) ^ (FieldType != null ? FieldType.GetHashCode() : 0);
-            return hashCode;
-        }
-    }
-
     protected AuditableDomainFieldBase(
         Ulid entityId,
         string name,
