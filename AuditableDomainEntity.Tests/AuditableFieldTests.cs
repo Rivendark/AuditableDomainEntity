@@ -13,44 +13,47 @@ public class AuditableFieldTests
             Number = 3,
             Date = new DateTime(2021, 12, 10)
         };
-        testClass.Save();
+        testClass.FinalizeChanges();
         var changes = testClass.GetEntityChanges();
         
-        Assert.NotNull(changes);
-        Assert.NotEmpty(changes);
-        Assert.Single(changes);
+        Assert.IsType<AuditableEntityCreated>(changes[0]);
         
-        var domainEvent = changes.Single();
-        Assert.NotNull(domainEvent);
-        Assert.Equal(aggregateRootId.Value, domainEvent.EntityId);
+        var auditableEntityCreated = (AuditableEntityCreated)changes[0];
+        Assert.NotNull(auditableEntityCreated);
+        Assert.NotNull(auditableEntityCreated.ValueFieldEvents);
+        Assert.NotEmpty(auditableEntityCreated.ValueFieldEvents);
+        Assert.NotNull(auditableEntityCreated.EntityFieldEvents);
+        Assert.Empty(auditableEntityCreated.EntityFieldEvents);
+        Assert.Equal(aggregateRootId.Value, auditableEntityCreated.EntityId);
         
-        var fieldEvents = domainEvent.FieldEvents;
+        var fieldEvents = auditableEntityCreated.ValueFieldEvents;
         
         Assert.NotNull(fieldEvents);
         Assert.NotEmpty(fieldEvents);
         Assert.Equal(2, fieldEvents.Count);
         
+        testClass.Commit();
+        
+        Assert.Empty(testClass.GetEntityChanges());
+        
         testClass.Number = 4;
         
-        testClass.Save();
+        testClass.FinalizeChanges();
         var updatedChanges = testClass.GetEntityChanges();
         
         Assert.NotNull(updatedChanges);
         Assert.NotEmpty(updatedChanges);
-        Assert.Equal(2, updatedChanges.Count);
-
-        Assert.IsType<AuditableEntityCreated>(updatedChanges[0]);
+        Assert.Single(updatedChanges);
         
-        var auditableEntityCreated = (AuditableEntityCreated)updatedChanges[0];
-        Assert.NotNull(auditableEntityCreated);
-        Assert.NotNull(auditableEntityCreated.FieldEvents);
-        Assert.Equal(2, auditableEntityCreated.FieldEvents.Count);
-        
-        Assert.IsType<AuditableEntityUpdated>(updatedChanges[1]);
-        var auditableEntityUpdated = (AuditableEntityUpdated)updatedChanges[1];
+        Assert.IsType<AuditableEntityUpdated>(updatedChanges[0]);
+        var auditableEntityUpdated = (AuditableEntityUpdated)updatedChanges[0];
         Assert.NotNull(auditableEntityUpdated);
-        Assert.NotNull(auditableEntityUpdated.FieldEvents);
-        Assert.Single(auditableEntityUpdated.FieldEvents);
+        Assert.NotNull(auditableEntityUpdated.ValueFieldEvents);
+        Assert.Single(auditableEntityUpdated.ValueFieldEvents);
+        
+        testClass.Commit();
+        
+        Assert.Empty(testClass.GetEntityChanges());
     }
 
     [Fact]
@@ -63,7 +66,7 @@ public class AuditableFieldTests
             Date = new DateTime(2021, 12, 10),
         };
         
-        preloadClass.Save();
+        preloadClass.FinalizeChanges();
         var changes = preloadClass.GetEntityChanges();
         preloadClass.Commit();
 
@@ -77,11 +80,12 @@ public class AuditableFieldTests
         
         testClassNew.Number = 4;
         
-        testClassNew.Save();
+        testClassNew.FinalizeChanges();
         var updatedChanges = testClassNew.GetEntityChanges();
         Assert.NotNull(updatedChanges);
         Assert.NotEmpty(updatedChanges);
         Assert.Single(updatedChanges);
         Assert.Equal(4, testClassNew.Number);
+        Assert.Equal(3, preloadClass.Number);
     }
 }

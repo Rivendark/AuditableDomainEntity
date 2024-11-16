@@ -1,17 +1,18 @@
-﻿using AuditableDomainEntity.Interfaces;
+﻿using AuditableDomainEntity.Attributes;
+using AuditableDomainEntity.Interfaces;
 
 namespace AuditableDomainEntity;
 
 public class TestRootEntity : AuditableAggregateRootEntity
 {
-    [AuditableField<int?>(nameof(Number), true)]
+    [AuditableValueField<int?>(true)]
     public int? Number
     {
         get => GetValue<int?>(nameof(Number));
         set => SetValue<int?>(value, nameof(Number));
     }
 
-    [AuditableField<DateTime?>(nameof(Date),true)]
+    [AuditableValueField<DateTime?>(true)]
     public DateTime? Date
     {
         get => GetValue<DateTime?>(nameof(Date));

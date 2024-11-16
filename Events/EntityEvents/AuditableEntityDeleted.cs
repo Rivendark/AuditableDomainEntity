@@ -10,6 +10,6 @@ public record AuditableEntityDeleted(
     DateTimeOffset CreatedAtUtc,
     Ulid? FieldId,
     Ulid? ParentId,
-    List<IDomainEntityEvent>? EntityFieldEvents,
-    List<IDomainFieldEvent> FieldEvents
+    List<IDomainEntityFieldEvent>? EntityFieldEvents,
+    List<IDomainValueFieldEvent> ValueFieldEvents
     ) : IDomainEntityEvent;

@@ -19,8 +19,8 @@ public abstract class AuditableAggregateRootEntity : AuditableEntityBase
         Id = aggregateRootId;
     }
 
-    public void Save()
+    public void FinalizeChanges()
     {
-        Save(Id);
+        FinalizeChanges(Id);
     }
 }

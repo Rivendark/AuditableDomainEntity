@@ -2,13 +2,12 @@
 
 namespace AuditableDomainEntity.Events.FieldEvents;
 
-public record AuditableFieldUpdated<T>(
+public record AuditableValueFieldInitialized<T>(
     Ulid EventId,
     Ulid FieldId,
     Ulid EntityId,
     string FieldName,
     int EventVersion,
-    T? OldValue,
-    T? NewValue,
+    T InitialValue,
     DateTimeOffset CreatedAtUtc
-    ) : IDomainFieldEvent;
+) : IDomainValueFieldEvent;
