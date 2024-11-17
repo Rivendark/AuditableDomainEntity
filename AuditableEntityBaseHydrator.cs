@@ -36,6 +36,10 @@ public abstract partial class AuditableEntityBase
     public void FinalizeChanges(AggregateRootId aggregateRootId)
     {
         FinalizeChangesInternal(aggregateRootId);
+        foreach (var entity in _children.Values)
+        {
+            entity?.FinalizeChanges(aggregateRootId);
+        }
     }
 
     private void FinalizeChangesInternal(AggregateRootId aggregateRootId)

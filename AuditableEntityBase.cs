@@ -14,7 +14,7 @@ public abstract partial class AuditableEntityBase
     private readonly Dictionary<string, Ulid> _propertyIds = new();
     private readonly Dictionary<Ulid, AuditableFieldRoot> _entityFields = new();
     private readonly Dictionary<Ulid, AuditableFieldRoot> _valueFields = new();
-    private readonly Dictionary<Ulid, AuditableEntity> _children = new();
+    private readonly Dictionary<Ulid, AuditableEntity?> _children = new();
 
     protected AuditableEntityBase(Ulid entityId)
     {
@@ -26,6 +26,13 @@ public abstract partial class AuditableEntityBase
     protected AuditableEntityBase()
     {
         
+    }
+
+    private void AttachChild(AuditableEntity? child, string propertyName)
+    {
+        if (child == null) throw new NullReferenceException(nameof(child));
+        child.Attach(EntityId, propertyName);
+        _children.Add(child.EntityId, child);
     }
 
     protected void SetValue<T>(T? value, string propertyName)
@@ -95,15 +102,7 @@ public abstract partial class AuditableEntityBase
         {
             if (property.Name != propertyName) continue;
             var field = GetEntityField<T>(property);
-            if (value is not IAuditableChildEntity auditableChildEntity)
-            {
-                throw new InvalidOperationException($"Clean me up");
-            }
-        
-            if (!auditableChildEntity.Initialized())
-            {
-                auditableChildEntity.Attach(EntityId, propertyName);
-            }
+            AttachChild(value as AuditableEntity, propertyName);
             field.FieldValue = value;
             _isDirty = true;
             
@@ -216,6 +215,11 @@ public abstract partial class AuditableEntityBase
         foreach (var entityEvents in _entityChanges.Values)
         {
             events.AddRange(entityEvents);
+        }
+
+        foreach (var entity in _children.Values.OfType<AuditableEntity>())
+        {
+            events.AddRange(entity.GetEntityChanges());
         }
 
         return events;

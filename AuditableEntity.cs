@@ -31,7 +31,7 @@ public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEnti
         return IsInitialized;
     }
     
-    public static AuditableEntity GenerateExistingEntity(
+    public static AuditableEntity? GenerateExistingEntity(
         Type entityType,
         List<IDomainEntityEvent> domainEntityEvents)
     {
