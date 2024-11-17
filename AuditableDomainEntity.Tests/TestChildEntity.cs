@@ -1,6 +1,6 @@
 ﻿using AuditableDomainEntity.Attributes;
 
-namespace AuditableDomainEntity;
+namespace AuditableDomainEntity.Tests;
 
 public class TestChildEntity : AuditableEntity
 {
@@ -12,8 +12,7 @@ public class TestChildEntity : AuditableEntity
     }
     
     public TestChildEntity(Ulid entityId, Ulid parentEntityId, string propertyName)
-        : base(entityId, parentEntityId, propertyName)
-    {
-        
-    }
+        : base(entityId, parentEntityId, propertyName) { }
+
+    public TestChildEntity() { }
 }

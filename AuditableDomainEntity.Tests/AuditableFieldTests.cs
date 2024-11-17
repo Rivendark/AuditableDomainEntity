@@ -1,14 +1,15 @@
 using AuditableDomainEntity.Events.EntityEvents;
+using AuditableDomainEntity.Tests;
 
-namespace AuditableDomainEntity.Tests;
+namespace AuditableDomainEntity.AuditableDomainEntity.Tests;
 
 public class AuditableFieldTests
 {
     [Fact]
     public void Should_Generate_FieldInitializedAndUpdatedEvents()
     {
-        var aggregateRootId = new AggregateRootId(Ulid.NewUlid(), typeof(TestRootEntity));
-        var testClass = new TestRootEntity(aggregateRootId)
+        var aggregateRootId = new AggregateRootId(Ulid.NewUlid(), typeof(TestValueTypeRootEntity));
+        var testClass = new TestValueTypeRootEntity(aggregateRootId)
         {
             Number = 3,
             Date = new DateTime(2021, 12, 10)
@@ -59,8 +60,8 @@ public class AuditableFieldTests
     [Fact]
     public void Should_LoadDataFromAuditHistory_IntoFields()
     {
-        var aggregateRootId = new AggregateRootId(Ulid.NewUlid(), typeof(TestRootEntity));
-        var preloadClass = new TestRootEntity(aggregateRootId)
+        var aggregateRootId = new AggregateRootId(Ulid.NewUlid(), typeof(TestValueTypeRootEntity));
+        var preloadClass = new TestValueTypeRootEntity(aggregateRootId)
         {
             Number = 3,
             Date = new DateTime(2021, 12, 10),
@@ -70,7 +71,7 @@ public class AuditableFieldTests
         var changes = preloadClass.GetEntityChanges();
         preloadClass.Commit();
 
-        var testClassNew = new TestRootEntity(aggregateRootId, changes);
+        var testClassNew = new TestValueTypeRootEntity(aggregateRootId, changes);
         
         var instantiatedChanges = testClassNew.GetEntityChanges();
         Assert.NotNull(instantiatedChanges);
@@ -87,5 +88,19 @@ public class AuditableFieldTests
         Assert.Single(updatedChanges);
         Assert.Equal(4, testClassNew.Number);
         Assert.Equal(3, preloadClass.Number);
+    }
+
+    [Fact]
+    public void Should_SaveHistoryFromEntityField()
+    {
+        var aggregateRootId = new AggregateRootId(Ulid.NewUlid(), typeof(TestRootEntity));
+        var entityTestClass = new TestRootEntity(aggregateRootId)
+        {
+            Child = new TestChildEntity()
+        };
+        
+        var changes = entityTestClass.GetEntityChanges();
+        Assert.NotNull(changes);
+        Assert.NotEmpty(changes);
     }
 }

@@ -30,7 +30,7 @@ public abstract partial class AuditableEntityBase
         
         LoadHistory(events);
         LoadPropertyHistory();
-        _isInitialized = true;
+        IsInitialized = true;
     }
 
     public void FinalizeChanges(AggregateRootId aggregateRootId)
@@ -40,7 +40,7 @@ public abstract partial class AuditableEntityBase
 
     private void FinalizeChangesInternal(AggregateRootId aggregateRootId)
     {
-        if (!_isInitialized) throw new InvalidOperationException("Cannot save an entity before the initialization is called.");
+        if (!IsInitialized) throw new InvalidOperationException("Cannot save an entity before the initialization is called.");
         var entityFieldChanges = GetEntityFieldChanges();
         var valueFieldChanges = GetValueFieldChanges();
         if (_entityEvents.Count == 0)

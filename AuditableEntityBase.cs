@@ -7,8 +7,8 @@ namespace AuditableDomainEntity;
 
 public abstract partial class AuditableEntityBase
 {
-    public Ulid EntityId { get; init; } = Ulid.NewUlid();
-    private readonly bool _isInitialized;
+    public Ulid EntityId { get; protected set; } = Ulid.NewUlid();
+    protected bool IsInitialized;
     private bool _isDirty;
     private int _version;
     private readonly Dictionary<string, Ulid> _propertyIds = new();
@@ -20,20 +20,23 @@ public abstract partial class AuditableEntityBase
     {
         EntityId = entityId;
         InitializeNewProperties();
-        _isInitialized = true;
+        IsInitialized = true;
+    }
+
+    protected AuditableEntityBase()
+    {
+        
     }
 
     protected void SetValue<T>(T? value, string propertyName)
     {
-        var propertyType = typeof(T);
-        
         switch (value)
         {
             case ValueType:
                 SetValueType(value, propertyName);
                 return;
-            case AuditableEntity entity :
-                SetValueEntity(entity, propertyName);
+            case IAuditableChildEntity:
+                SetValueEntity(value, propertyName);
                 return;
             case null:
                 switch (typeof(T))
@@ -41,8 +44,8 @@ public abstract partial class AuditableEntityBase
                     case { IsValueType: true }:
                         SetValueType(value, propertyName);
                         return;
-                    case var _ when propertyType.IsSubclassOf(typeof(AuditableEntity)):
-                        SetValueEntity(value as AuditableEntity, propertyName);
+                    case { IsValueType: false }:
+                        SetValueEntity<T>(propertyName);
                         return;
                 }
                 break;
@@ -59,7 +62,7 @@ public abstract partial class AuditableEntityBase
             {
                 case { IsValueType: true }:
                     return GetValueField<T>(property).FieldValue;
-                case var _ when property.PropertyType.IsSubclassOf(typeof(AuditableEntity)):
+                case { IsValueType: false, IsClass: true }:
                     return GetEntityField<T>(property).FieldValue;
             }
         }
@@ -69,7 +72,7 @@ public abstract partial class AuditableEntityBase
     
     private void SetValueType<T>(T? value, string propertyName)
     {
-        if (!_isInitialized) return;
+        if (!IsInitialized) return;
         var properties = GetType().GetProperties();
         foreach (var property in properties)
         {
@@ -84,19 +87,44 @@ public abstract partial class AuditableEntityBase
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
 
-    private void SetValueEntity<T>(T? value, string propertyName) where T : AuditableEntity
+    private void SetValueEntity<T>(T value, string propertyName)
     {
-        if (!_isInitialized) return;
+        if (!IsInitialized) return;
         var properties = GetType().GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
-            var auditableDomainField = GetEntityField<T>(property);
-            auditableDomainField.FieldValue = value;
+            var field = GetEntityField<T>(property);
+            if (value is not IAuditableChildEntity auditableChildEntity)
+            {
+                throw new InvalidOperationException($"Clean me up");
+            }
+        
+            if (!auditableChildEntity.Initialized())
+            {
+                auditableChildEntity.Attach(EntityId, propertyName);
+            }
+            field.FieldValue = value;
             _isDirty = true;
             
             return;
         }
+    }
+
+    private void SetValueEntity<T>(string propertyName)
+    {
+        if (!IsInitialized) return;
+        var properties = GetType().GetProperties();
+        foreach (var property in properties)
+        {
+            if (property.Name != propertyName) continue;
+            var field = GetEntityField<T>(property);
+            field.FieldValue = default;
+            _isDirty = true;
+            
+            return;
+        }
+        
     }
     
     private AuditableValueField<T> GetValueField<T>(PropertyInfo property)
@@ -121,7 +149,7 @@ public abstract partial class AuditableEntityBase
             throw new InvalidOperationException($"Unable to find PropertyId for {property.Name}. {GetType().Name}:{nameof(_propertyIds)}");
         }
         
-        if (!_valueFields.TryGetValue(fieldId, out var field))
+        if (!_entityFields.TryGetValue(fieldId, out var field))
         {
             throw new InvalidOperationException($"PropertyField not found for {property.Name}. {GetType().Name}:{nameof(_entityFields)}");
         }
@@ -145,7 +173,7 @@ public abstract partial class AuditableEntityBase
         }
     }
 
-    private void InitializeNewProperties()
+    protected void InitializeNewProperties()
     {
         var properties = GetType().GetProperties();
         foreach (var property in properties)
