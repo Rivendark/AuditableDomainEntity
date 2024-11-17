@@ -99,7 +99,9 @@ public class AuditableFieldTests
             Child = new TestChildEntity()
         };
         
+        entityTestClass.FinalizeChanges();
         var changes = entityTestClass.GetEntityChanges();
+        entityTestClass.Commit();
         Assert.NotNull(changes);
         Assert.NotEmpty(changes);
     }
