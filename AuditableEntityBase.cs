@@ -33,22 +33,40 @@ public abstract partial class AuditableEntityBase
                 SetValueType(value, propertyName);
                 return;
             case AuditableEntity entity :
-                SetValueAuditableEntity(entity, propertyName);
+                SetValueEntity(entity, propertyName);
                 return;
             case null:
                 switch (typeof(T))
                 {
-                    case { IsValueType:true }:
+                    case { IsValueType: true }:
                         SetValueType(value, propertyName);
                         return;
                     case var _ when propertyType.IsSubclassOf(typeof(AuditableEntity)):
-                        SetValueAuditableEntity(value as AuditableEntity, propertyName);
+                        SetValueEntity(value as AuditableEntity, propertyName);
                         return;
                 }
                 break;
         }
     }
+    
+    protected T? GetValue<T>(string propertyName)
+    {
+        var properties = GetType().GetProperties();
+        foreach (var property in properties)
+        {
+            if (property.Name != propertyName) continue;
+            switch (typeof(T))
+            {
+                case { IsValueType: true }:
+                    return GetValueField<T>(property).FieldValue;
+                case var _ when property.PropertyType.IsSubclassOf(typeof(AuditableEntity)):
+                    return GetEntityField<T>(property).FieldValue;
+            }
+        }
 
+        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
+    }
+    
     private void SetValueType<T>(T? value, string propertyName)
     {
         if (!_isInitialized) return;
@@ -56,7 +74,7 @@ public abstract partial class AuditableEntityBase
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
-            var auditableDomainField = GetAuditableDomainField<T>(property);
+            var auditableDomainField = GetValueField<T>(property);
             auditableDomainField.FieldValue = value;
             _isDirty = true;
                     
@@ -66,33 +84,51 @@ public abstract partial class AuditableEntityBase
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
 
-    private void SetValueAuditableEntity<T>(T? value, string propertyName) where T : AuditableEntity
+    private void SetValueEntity<T>(T? value, string propertyName) where T : AuditableEntity
     {
         if (!_isInitialized) return;
-    }
-
-    protected T? GetValue<T>(string propertyName)
-    {
         var properties = GetType().GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
-            return GetAuditableDomainField<T>(property).FieldValue;
+            var auditableDomainField = GetEntityField<T>(property);
+            auditableDomainField.FieldValue = value;
+            _isDirty = true;
+            
+            return;
         }
-
-        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
-
-    private AuditableValueField<T> GetAuditableDomainField<T>(PropertyInfo property)
+    
+    private AuditableValueField<T> GetValueField<T>(PropertyInfo property)
     {
         if (!_propertyIds.TryGetValue(property.Name, out var fieldId))
         {
-            throw new InvalidOperationException($"Property {property.Name} is not found in type {GetType().Name}:{nameof(_propertyIds)}");
+            throw new InvalidOperationException($"Unable to find PropertyId for {property.Name}. {GetType().Name}:{nameof(_propertyIds)}");
         }
 
-        return (AuditableValueField<T>)_valueFields[fieldId];
+        if (!_valueFields.TryGetValue(fieldId, out var field))
+        {
+            throw new InvalidOperationException($"PropertyField not found for {property.Name}. {GetType().Name}:{nameof(_valueFields)}");
+        }
+
+        return (AuditableValueField<T>)field;
     }
 
+    private AuditableEntityField<T> GetEntityField<T>(PropertyInfo property)
+    {
+        if (!_propertyIds.TryGetValue(property.Name, out var fieldId))
+        {
+            throw new InvalidOperationException($"Unable to find PropertyId for {property.Name}. {GetType().Name}:{nameof(_propertyIds)}");
+        }
+        
+        if (!_valueFields.TryGetValue(fieldId, out var field))
+        {
+            throw new InvalidOperationException($"PropertyField not found for {property.Name}. {GetType().Name}:{nameof(_entityFields)}");
+        }
+        
+        return (AuditableEntityField<T>)field;
+    }
+    
     private void ApplyEntityEvent(IDomainEntityEvent domainEvent)
     {
         switch (domainEvent)

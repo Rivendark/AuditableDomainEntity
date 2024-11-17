@@ -2,7 +2,7 @@
 
 namespace AuditableDomainEntity.Events.EntityEvents;
 
-public record AuditableEntityAdded(
+public record AuditableEntityRemoved(
     Ulid EventId,
     Ulid EntityId,
     Ulid FieldId,
@@ -10,4 +10,4 @@ public record AuditableEntityAdded(
     Ulid? ParentId,
     int EventVersion,
     DateTimeOffset CreatedAtUtc
-    ): IDomainEntityFieldEvent;
+    ) : IDomainEntityFieldEvent;

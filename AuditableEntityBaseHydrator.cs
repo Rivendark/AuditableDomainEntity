@@ -131,6 +131,12 @@ public abstract partial class AuditableEntityBase
                 LoadValueFieldHistory(property);
                 continue;
             }
+
+            if (CheckHasAttribute(property, typeof(IAuditableEntityFieldAttribute)))
+            {
+                LoadEntityFieldHistory(property);
+                continue;
+            }
         }
     }
 
@@ -245,26 +251,22 @@ public abstract partial class AuditableEntityBase
             }
 
             // Handle Child Entity Events
-            if (domainEvent.FieldId is not null
-                && domainEvent.ParentId is not null
-                && domainEvent.ParentId == EntityId)
-            { 
-                // Create entity
-                if (domainEvent is AuditableEntityCreated auditableEntityCreated)
-                {
-                    if (!_children.ContainsKey(auditableEntityCreated.EntityId))
-                    {
-                        if (!_entityFields.TryGetValue(domainEvent.FieldId.Value, out var childEntityField))
-                            throw new InvalidOperationException($"Property {domainEvent.FieldId.Value} has no child entity field.");
+            if (domainEvent.FieldId is null
+                || domainEvent.ParentId is null
+                || domainEvent.ParentId != EntityId) continue;
+            
+            if (domainEvent is not AuditableEntityCreated auditableEntityCreated) continue;
+            if (_children.ContainsKey(auditableEntityCreated.EntityId)) continue;
+            
+            if (!_entityFields.TryGetValue(domainEvent.FieldId.Value, out var childEntityField))
+                throw new InvalidOperationException($"Property {domainEvent.FieldId.Value} has no child entity field.");
                 
-                        if (childEntityField.FieldType is null)
-                            throw new InvalidOperationException($"Property {domainEvent.FieldId.Value} has no field type defined.");
+            if (childEntityField.FieldType is null)
+                throw new InvalidOperationException($"Property {domainEvent.FieldId.Value} has no field type defined.");
                 
-                        var childEntity = AuditableEntity.GenerateExistingEntity(childEntityField.FieldType, events);
-                        _children.TryAdd(childEntity.EntityId, childEntity);
-                    }
-                }
-            }
+            // Create entity
+            var childEntity = AuditableEntity.GenerateExistingEntity(childEntityField.FieldType, events);
+            _children.TryAdd(childEntity.EntityId, childEntity);
         }
     }
 }
