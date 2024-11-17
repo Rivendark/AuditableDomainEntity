@@ -4,11 +4,18 @@ namespace AuditableDomainEntity.Tests;
 
 public class TestChildEntity : AuditableEntity
 {
-    [AuditableValueField<int?>]
+    [AuditableValueField<bool?>]
     public bool? BoolProperty
     {
         get => GetValue<bool?>(nameof(BoolProperty));
         set => SetValue<bool?>(value, nameof(BoolProperty));
+    }
+
+    [AuditableValueField<int?>]
+    public int? IntProperty
+    {
+        get => GetValue<int?>(nameof(IntProperty));
+        set => SetValue<int?>(value, nameof(IntProperty));
     }
     
     public TestChildEntity(Ulid entityId, Ulid parentEntityId, string propertyName)

@@ -96,8 +96,13 @@ public class AuditableFieldTests
         var aggregateRootId = new AggregateRootId(Ulid.NewUlid(), typeof(TestRootEntity));
         var entityTestClass = new TestRootEntity(aggregateRootId)
         {
-            Child = new TestChildEntity()
+            Child = new TestChildEntity
+            {
+                BoolProperty = true
+            }
         };
+
+        entityTestClass.Child.IntProperty = 14;
         
         entityTestClass.FinalizeChanges();
         var changes = entityTestClass.GetEntityChanges();

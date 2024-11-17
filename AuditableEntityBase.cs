@@ -79,11 +79,15 @@ public abstract partial class AuditableEntityBase
     
     private void SetValueType<T>(T? value, string propertyName)
     {
-        if (!IsInitialized) return;
         var properties = GetType().GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
+            if (!IsInitialized)
+            {
+                if (!LoadInitialValueField(property))
+                    throw new InvalidOperationException($"Property {propertyName} can not be initialized");
+            }
             var auditableDomainField = GetValueField<T>(property);
             auditableDomainField.FieldValue = value;
             _isDirty = true;
@@ -185,8 +189,18 @@ public abstract partial class AuditableEntityBase
         }   
     }
 
+    private bool LoadInitialValueField(PropertyInfo property)
+    {
+        var attributes = property.GetCustomAttributes().ToList();
+        if (!attributes.Any(a => a is IAuditableValueFieldAttribute)) return false;
+        LoadValueField(property);
+        return true;
+    }
+
     private void LoadValueField(PropertyInfo property)
     {
+        if (_propertyIds.ContainsKey(property.Name)) return;
+        
         var contextType = typeof(AuditableValueField<>).MakeGenericType(property.PropertyType);
         dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property.Name)!;
         _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
