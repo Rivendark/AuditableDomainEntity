@@ -5,7 +5,7 @@ namespace AuditableDomainEntity;
 
 public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEntity
 {
-    public AuditableEntity(AggregateRootId id, Ulid entityId, List<IDomainEntityEvent> events) : base(id, entityId, events)
+    public AuditableEntity(AggregateRootId aggregateRootId, Ulid entityId, List<IDomainEntityEvent> events) : base(aggregateRootId, entityId, events)
     {
         // TODO fix where this information is kept and loaded
         var entityCreatedEvent = events.First(x => x.EntityId == entityId && x is AuditableEntityCreated);
@@ -54,7 +54,7 @@ public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEnti
 
     public AggregateRootId GetAggregateRootId()
     {
-        return Id;
+        return AggregateRootId;
     }
 
     public static AuditableEntity? GenerateExistingEntity(

@@ -13,8 +13,9 @@ public abstract partial class AuditableEntityBase
     private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _entityChanges = new();
     private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _events = new();
     
-    protected AuditableEntityBase(AggregateRootId id, Ulid entityId, List<IDomainEntityEvent>? events)
+    protected AuditableEntityBase(AggregateRootId aggregateRootId, Ulid entityId, List<IDomainEntityEvent>? events)
     {
+        AggregateRootId = aggregateRootId;
         EntityType = GetType();
         if (events == null || events.Count == 0) return;
         
@@ -41,7 +42,7 @@ public abstract partial class AuditableEntityBase
         List<IDomainEntityFieldEvent> entityFieldEvents)
     {
         return new AuditableEntityCreated(
-            Id,
+            AggregateRootId,
             Ulid.NewUlid(),
             EntityId,
             EntityType,
@@ -59,7 +60,7 @@ public abstract partial class AuditableEntityBase
         List<IDomainEntityFieldEvent> entityFieldEvents)
     {
         return new AuditableEntityUpdated(
-            Id,
+            AggregateRootId,
             Ulid.NewUlid(),
             EntityId,
             null,
@@ -161,7 +162,7 @@ public abstract partial class AuditableEntityBase
             if (Children.ContainsKey(auditableEntityCreated.EntityId)) continue;
                 
             // Create entity
-            var childEntity = AuditableEntity.GenerateExistingEntity(auditableEntityCreated.EntityType, Id, domainEvent.EntityId, events);
+            var childEntity = AuditableEntity.GenerateExistingEntity(auditableEntityCreated.EntityType, AggregateRootId, domainEvent.EntityId, events);
             if (childEntity == null)
                 throw new InvalidOperationException(
                     $"Failed to generate child entity. EntityId: {domainEvent.EntityId}. " +

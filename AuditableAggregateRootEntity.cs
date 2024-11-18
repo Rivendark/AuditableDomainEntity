@@ -17,10 +17,10 @@ public abstract class AuditableAggregateRootEntity : AuditableEntityBase
 
     public void FinalizeChanges()
     {
-        FinalizeChangesInternal(Id);
+        FinalizeChangesInternal(AggregateRootId);
         foreach (var entity in Children.Values)
         {
-            entity?.FinalizeChanges(Id);
+            entity?.FinalizeChanges(AggregateRootId);
         }
     }
 }

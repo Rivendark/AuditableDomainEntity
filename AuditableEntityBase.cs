@@ -7,7 +7,7 @@ namespace AuditableDomainEntity;
 
 public abstract partial class AuditableEntityBase
 {
-    public AggregateRootId Id { get; private set; }
+    public AggregateRootId AggregateRootId { get; private set; }
     protected Ulid EntityId { get; set; } = Ulid.NewUlid();
     protected Type EntityType { get; }
     protected Ulid? ParentEntityId { get; set; }
@@ -20,9 +20,9 @@ public abstract partial class AuditableEntityBase
     private readonly Dictionary<Ulid, AuditableFieldRoot> _entityFields = new();
     private readonly Dictionary<Ulid, AuditableFieldRoot> _valueFields = new();
 
-    protected AuditableEntityBase(AggregateRootId id, Ulid entityId)
+    protected AuditableEntityBase(AggregateRootId aggregateRootId, Ulid entityId)
     {
-        Id = id;
+        AggregateRootId = aggregateRootId;
         EntityType = GetType();
         EntityId = entityId;
         InitializeNewProperties();
@@ -31,9 +31,9 @@ public abstract partial class AuditableEntityBase
 
     protected AuditableEntityBase()
     {
-        Id = new AggregateRootId(Ulid.NewUlid(), GetType());
-        EntityId = Id.Value;
-        EntityType = Id.EntityType;
+        AggregateRootId = new AggregateRootId(Ulid.NewUlid(), GetType());
+        EntityId = AggregateRootId.Value;
+        EntityType = AggregateRootId.EntityType;
         if (!EntityType.IsSubclassOf(typeof(AuditableAggregateRootEntity)))
         {
             EntityId = Ulid.NewUlid();
@@ -156,7 +156,7 @@ public abstract partial class AuditableEntityBase
         switch (domainEvent)
         {
             case AuditableEntityCreated auditableEntityCreated:
-                Id = auditableEntityCreated.Id;
+                AggregateRootId = auditableEntityCreated.Id;
                 EntityId = auditableEntityCreated.EntityId;
                 Version = auditableEntityCreated.EventVersion;
                 ParentEntityId = auditableEntityCreated.ParentId;
