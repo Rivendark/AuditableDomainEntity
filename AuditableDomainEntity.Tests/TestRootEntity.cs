@@ -6,15 +6,22 @@ namespace AuditableDomainEntity.Tests;
 public class TestRootEntity : AuditableAggregateRootEntity
 {
     [AuditableEntityField<TestChildEntity>(true)]
-    public TestChildEntity Child
+    public TestChildEntity? Child
     {
-        get => GetValue<TestChildEntity?>(nameof(Child));
-        set => SetValue<TestChildEntity?>(value, nameof(Child));
+        get => GetEntity<TestChildEntity?>(nameof(Child));
+        set => SetEntity<TestChildEntity?>(value, nameof(Child));
+    }
+
+    [AuditableValueField<string>]
+    public string? StringProperty
+    {
+        get => GetValue<string?>(nameof(StringProperty));
+        set => SetValue<string?>(value, nameof(StringProperty));
     }
     
     public TestRootEntity(
         AggregateRootId aggregateRootId,
-        List<IDomainEntityEvent>? events)
+        List<IDomainEntityEvent> events)
         : base(aggregateRootId, events)
     {
     }

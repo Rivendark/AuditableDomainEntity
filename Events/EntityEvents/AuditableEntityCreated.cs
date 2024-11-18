@@ -6,6 +6,7 @@ public record AuditableEntityCreated(
     AggregateRootId Id,
     Ulid EventId,
     Ulid EntityId,
+    Type EntityType,
     Ulid? FieldId,
     Ulid? ParentId,
     int EventVersion,

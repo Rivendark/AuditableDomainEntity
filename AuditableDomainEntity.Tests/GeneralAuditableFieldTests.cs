@@ -1,9 +1,10 @@
 using AuditableDomainEntity.Events.EntityEvents;
+using AuditableDomainEntity.Events.FieldEvents;
 using AuditableDomainEntity.Tests;
 
 namespace AuditableDomainEntity.AuditableDomainEntity.Tests;
 
-public class AuditableFieldTests
+public class GeneralAuditableFieldTests
 {
     [Fact]
     public void Should_Generate_FieldInitializedAndUpdatedEvents()
@@ -109,5 +110,66 @@ public class AuditableFieldTests
         entityTestClass.Commit();
         Assert.NotNull(changes);
         Assert.NotEmpty(changes);
+        Assert.Equal(2, changes.Count);
+        
+        Assert.IsType<AuditableEntityCreated>(changes[0]);
+        var auditableEntityCreated = (AuditableEntityCreated)changes[0];
+        Assert.NotNull(auditableEntityCreated);
+        Assert.NotNull(auditableEntityCreated.ValueFieldEvents);
+        Assert.Empty(auditableEntityCreated.ValueFieldEvents);
+        Assert.NotNull(auditableEntityCreated.EntityFieldEvents);
+        Assert.Single(auditableEntityCreated.EntityFieldEvents);
+        
+        var auditableChildEntityCreated = (AuditableEntityCreated)changes[1];
+        Assert.NotNull(auditableChildEntityCreated);
+        Assert.NotNull(auditableChildEntityCreated.ValueFieldEvents);
+        Assert.Equal(2, auditableChildEntityCreated.ValueFieldEvents.Count);
+
+        var boolType = typeof(AuditableValueFieldInitialized<bool?>);
+        var boolProperty = auditableChildEntityCreated.ValueFieldEvents[0];
+        Assert.NotNull(boolProperty);
+        Assert.True(boolType.IsInstanceOfType(boolProperty));
+        var boolAuditable = boolProperty as AuditableValueFieldInitialized<bool?>;
+        Assert.NotNull(boolAuditable);
+        Assert.Equal(true, boolAuditable.InitialValue);
+        
+        var intType = typeof(AuditableValueFieldInitialized<int?>);
+        var intProperty = auditableChildEntityCreated.ValueFieldEvents[1];
+        Assert.NotNull(intProperty);
+        Assert.True(intType.IsInstanceOfType(intProperty));
+        var intAuditable = intProperty as AuditableValueFieldInitialized<int?>;
+        Assert.NotNull(intAuditable);
+        Assert.Equal(14, intAuditable.InitialValue);
+    }
+
+    [Fact]
+    public void Should_LoadDataFromAuditHistory_IntoFieldsWithChildren()
+    {
+        var aggregateRootId = new AggregateRootId(Ulid.NewUlid(), typeof(TestRootEntity));
+        var entityTestClass = new TestRootEntity(aggregateRootId)
+        {
+            Child = new TestChildEntity
+            {
+                BoolProperty = true
+            },
+            StringProperty = "TestString"
+        };
+
+        entityTestClass.Child.IntProperty = 14;
+        
+        entityTestClass.FinalizeChanges();
+        var changes = entityTestClass.GetEntityChanges();
+        entityTestClass.Commit();
+        
+        Assert.NotNull(changes);
+        
+        var historyTestClass = new TestRootEntity(aggregateRootId, changes);
+        
+        var instantiatedChanges = historyTestClass.GetEntityChanges();
+        Assert.NotNull(instantiatedChanges);
+        Assert.Empty(instantiatedChanges);
+        
+        Assert.Equal(entityTestClass.Child.IntProperty, historyTestClass.Child.IntProperty);
+        Assert.Equal(entityTestClass.StringProperty, historyTestClass.StringProperty);
     }
 }

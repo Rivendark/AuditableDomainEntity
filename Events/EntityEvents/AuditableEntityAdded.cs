@@ -7,7 +7,7 @@ public record AuditableEntityAdded(
     Ulid EntityId,
     Ulid FieldId,
     string FieldName,
-    Ulid? ParentId,
+    Ulid ParentEntityId,
     int EventVersion,
     DateTimeOffset CreatedAtUtc
     ): IDomainEntityFieldEvent;

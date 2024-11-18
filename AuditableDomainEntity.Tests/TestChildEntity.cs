@@ -1,4 +1,5 @@
 ﻿using AuditableDomainEntity.Attributes;
+using AuditableDomainEntity.Interfaces;
 
 namespace AuditableDomainEntity.Tests;
 
@@ -18,8 +19,10 @@ public class TestChildEntity : AuditableEntity
         set => SetValue<int?>(value, nameof(IntProperty));
     }
     
-    public TestChildEntity(Ulid entityId, Ulid parentEntityId, string propertyName)
-        : base(entityId, parentEntityId, propertyName) { }
+    // public TestChildEntity(Ulid entityId, Ulid parentEntityId, string propertyName)
+    //     : base(entityId, parentEntityId, propertyName) { }
 
     public TestChildEntity() { }
+
+    public TestChildEntity(Ulid entityId, List<IDomainEntityEvent> events) : base(entityId, events) { }
 }

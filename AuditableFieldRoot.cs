@@ -10,7 +10,7 @@ public abstract class AuditableFieldRoot
     public string Name { get; init; }
     public Type? FieldType { get; init; }
     private readonly List<IDomainEvent> _changes = [];
-    private readonly List<IDomainEvent> _events;
+    private readonly List<IDomainEvent> _events = [];
     
     public static dynamic GenerateNewField(Type fieldType, Ulid entityId, PropertyInfo property)
     {
@@ -22,11 +22,12 @@ public abstract class AuditableFieldRoot
     public static dynamic GenerateExistingEntityField(
         Type fieldType,
         List<IDomainEntityFieldEvent> domainEvents,
+        Dictionary<Ulid, IAuditableChildEntity?> auditableEntities,
         Type propertyType)
     {
         if (!fieldType.IsGenericType) throw new ArgumentException("Field type must be a generic type", nameof(fieldType));
         var contextType = fieldType.MakeGenericType(propertyType);
-        return Activator.CreateInstance(contextType, domainEvents)!;
+        return Activator.CreateInstance(contextType, domainEvents, auditableEntities)!;
     }
     
     public static dynamic GenerateExistingValueField(
@@ -47,9 +48,13 @@ public abstract class AuditableFieldRoot
         _events = new List<IDomainEvent>();
     }
 
-    protected AuditableFieldRoot(IEnumerable<IDomainEvent> events)
+    protected AuditableFieldRoot()
     {
-        _events = events.ToList();
+    }
+
+    protected void SetEvents(List<IDomainEvent> domainEvents)
+    {
+        _events.AddRange(domainEvents);
     }
     
     public bool HasChanges() => _changes.Count > 0;

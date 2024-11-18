@@ -15,6 +15,7 @@ public abstract partial class AuditableEntityBase
     
     protected AuditableEntityBase(Ulid entityId, List<IDomainEntityEvent>? events)
     {
+        EntityType = GetType();
         if (events == null || events.Count == 0) return;
         
         var initializedEvent = events
@@ -24,7 +25,6 @@ public abstract partial class AuditableEntityBase
         if (initializedEvent is null) throw new InvalidOperationException(
             $"Cannot load an entity history for {entityId}. AuditableEntityCreated event not found.");
         
-        EntityId = initializedEvent.EntityId;
         
         ApplyEntityEvent(initializedEvent);
         
@@ -33,6 +33,8 @@ public abstract partial class AuditableEntityBase
         IsInitialized = true;
     }
 
+    #region Finalize
+
     public void FinalizeChanges(AggregateRootId aggregateRootId)
     {
         FinalizeChangesInternal(aggregateRootId);
@@ -40,6 +42,41 @@ public abstract partial class AuditableEntityBase
         {
             entity?.FinalizeChanges(aggregateRootId);
         }
+    }
+
+    protected virtual AuditableEntityCreated CreateAuditableEntityCreated(
+        AggregateRootId aggregateRootId,
+        List<IDomainValueFieldEvent> valueFieldEvents,
+        List<IDomainEntityFieldEvent> entityFieldEvents)
+    {
+        return new AuditableEntityCreated(
+            aggregateRootId,
+            Ulid.NewUlid(),
+            EntityId,
+            EntityType,
+            null,
+            null,
+            ++Version,
+            valueFieldEvents,
+            entityFieldEvents,
+            DateTimeOffset.UtcNow);
+    }
+
+    protected virtual AuditableEntityUpdated CreateAuditableEntityUpdated(
+        AggregateRootId aggregateRootId,
+        List<IDomainValueFieldEvent> valueFieldEvents,
+        List<IDomainEntityFieldEvent> entityFieldEvents)
+    {
+        return new AuditableEntityUpdated(
+            aggregateRootId,
+            Ulid.NewUlid(),
+            EntityId,
+            null,
+            null,
+            ++Version,
+            valueFieldEvents,
+            entityFieldEvents,
+            DateTimeOffset.UtcNow);
     }
 
     private void FinalizeChangesInternal(AggregateRootId aggregateRootId)
@@ -52,16 +89,7 @@ public abstract partial class AuditableEntityBase
             if (!_entityChanges.ContainsKey(aggregateRootId.Value))
             {
                 _entityChanges.TryAdd(EntityId, [
-                    new AuditableEntityCreated(
-                        aggregateRootId,
-                        Ulid.NewUlid(),
-                        EntityId,
-                        null,
-                        null,
-                        ++_version,
-                        valueFieldChanges,
-                        entityFieldChanges,
-                        DateTimeOffset.UtcNow)
+                    CreateAuditableEntityCreated(aggregateRootId, valueFieldChanges, entityFieldChanges)
                 ]);
                 
                 CommitFieldChanges();
@@ -72,22 +100,15 @@ public abstract partial class AuditableEntityBase
         if (entityFieldChanges.Count == 0 && valueFieldChanges.Count == 0) return;
         
         _entityChanges.TryAdd(EntityId, []);
-        _entityChanges[EntityId].Add(
-            new AuditableEntityUpdated(
-                aggregateRootId,
-                Ulid.NewUlid(),
-                EntityId,
-                null,
-                null,
-                ++_version,
-                valueFieldChanges,
-                entityFieldChanges,
-                DateTimeOffset.UtcNow)
-        );
+        _entityChanges[EntityId].Add(CreateAuditableEntityUpdated(aggregateRootId, valueFieldChanges, entityFieldChanges));
             
         CommitFieldChanges();
     }
-    
+
+    #endregion
+
+    #region Commit
+
     private void CommitFieldChanges()
     {
         foreach (var field in _entityFields.Values)
@@ -125,6 +146,74 @@ public abstract partial class AuditableEntityBase
         _entityChanges.Clear();
     }
 
+    #endregion
+
+    private void LoadHistory(List<IDomainEntityEvent>? events)
+    {
+        if (events == null || events.Count == 0) return;
+        
+        foreach (var domainEvent in events.OrderBy(e => e.EventVersion))
+        {
+            // Handle Root Entity Events
+            if (domainEvent.EntityId == EntityId)
+            {
+                ApplyEntityEvent(domainEvent);
+                continue;
+            }
+
+            // Handle Child Entity Events
+            if (domainEvent.FieldId is null
+                || domainEvent.ParentId is null
+                || domainEvent.ParentId != EntityId) continue;
+            
+            if (domainEvent is not AuditableEntityCreated auditableEntityCreated) continue;
+            if (_children.ContainsKey(auditableEntityCreated.EntityId)) continue;
+                
+            // Create entity
+            var childEntity = AuditableEntity.GenerateExistingEntity(auditableEntityCreated.EntityType, domainEvent.EntityId, events);
+            if (childEntity == null)
+                throw new InvalidOperationException(
+                    $"Failed to generate child entity. EntityId: {domainEvent.EntityId}. " +
+                    $"Type: {auditableEntityCreated.EntityType.Name}");
+            
+            _children.TryAdd(childEntity.EntityId, childEntity);
+        }
+    }
+    
+    private void LoadEntityHistory(IDomainEntityEvent domainEvent)
+    {
+        if (!_entityEvents.TryGetValue(domainEvent.EventId, out var value))
+        {
+            value = [];
+            _entityEvents.Add(domainEvent.EventId, value);
+        }
+
+        value.Add(domainEvent);
+        if (domainEvent.ValueFieldEvents != null)
+        {
+            foreach (var fieldEvent in domainEvent.ValueFieldEvents)
+            {
+                if (!_valueFieldEvents.ContainsKey(fieldEvent.FieldId))
+                    _valueFieldEvents.TryAdd(fieldEvent.FieldId, []);
+
+                _valueFieldEvents[fieldEvent.FieldId].Add(fieldEvent);
+                _propertyIds.TryAdd(fieldEvent.FieldName, fieldEvent.FieldId);
+            }
+        }
+
+        if (domainEvent.EntityFieldEvents != null)
+        {
+            foreach (var fieldEvent in domainEvent.EntityFieldEvents)
+            {
+                if (!_entityFieldEvents.ContainsKey(fieldEvent.FieldId))
+                    _entityFieldEvents.TryAdd(fieldEvent.FieldId, []);
+
+                _entityFieldEvents[fieldEvent.FieldId].Add(fieldEvent);
+                _propertyIds.TryAdd(fieldEvent.FieldName, fieldEvent.FieldId);
+            }
+        }
+    }
+    
     private void LoadPropertyHistory()
     {
         var properties = GetType().GetProperties();
@@ -176,6 +265,7 @@ public abstract partial class AuditableEntityBase
                 var entityFieldWithHistory = AuditableFieldRoot.GenerateExistingEntityField(
                     typeof(AuditableEntityField<>),
                     domainEvents,
+                    _children,
                     property.PropertyType);
                 _entityFields.TryAdd(entityFieldWithHistory.FieldId, entityFieldWithHistory);
                 return;
@@ -189,7 +279,7 @@ public abstract partial class AuditableEntityBase
         _propertyIds.Add(entityFieldNew.Name, entityFieldNew.FieldId);
         _entityFields.TryAdd(entityFieldNew.FieldId, entityFieldNew);
     }
-
+    
     private static bool CheckHasAttribute(PropertyInfo property, Type attributeInterface)
     {
         var hasAttribute = new Dictionary<Type, bool>();
@@ -205,72 +295,5 @@ public abstract partial class AuditableEntityBase
             throw new InvalidOperationException($"Property {property.Name} has more than one AuditableFieldType attribute.");
         
         return hasAttribute[attributeInterface];
-    }
-
-    private void LoadEntityHistory(IDomainEntityEvent domainEvent)
-    {
-        if (!_entityEvents.TryGetValue(domainEvent.EventId, out var value))
-        {
-            value = [];
-            _entityEvents.Add(domainEvent.EventId, value);
-        }
-
-        value.Add(domainEvent);
-        if (domainEvent.ValueFieldEvents != null)
-        {
-            foreach (var fieldEvent in domainEvent.ValueFieldEvents)
-            {
-                if (!_valueFieldEvents.ContainsKey(fieldEvent.FieldId))
-                    _valueFieldEvents.TryAdd(fieldEvent.FieldId, []);
-
-                _valueFieldEvents[fieldEvent.FieldId].Add(fieldEvent);
-                _propertyIds.TryAdd(fieldEvent.FieldName, fieldEvent.FieldId);
-            }
-        }
-
-        if (domainEvent.EntityFieldEvents != null)
-        {
-            foreach (var fieldEvent in domainEvent.EntityFieldEvents)
-            {
-                if (!_entityFieldEvents.ContainsKey(fieldEvent.FieldId))
-                    _entityFieldEvents.TryAdd(fieldEvent.FieldId, []);
-
-                _entityFieldEvents[fieldEvent.FieldId].Add(fieldEvent);
-                _propertyIds.TryAdd(fieldEvent.FieldName, fieldEvent.FieldId);
-            }
-        }
-    }
-
-    private void LoadHistory(List<IDomainEntityEvent>? events)
-    {
-        if (events == null || events.Count == 0) return;
-        
-        foreach (var domainEvent in events.OrderBy(e => e.EventVersion))
-        {
-            // Handle Root Entity Events
-            if (domainEvent.EntityId == EntityId)
-            {
-                LoadEntityHistory(domainEvent);
-                continue;
-            }
-
-            // Handle Child Entity Events
-            if (domainEvent.FieldId is null
-                || domainEvent.ParentId is null
-                || domainEvent.ParentId != EntityId) continue;
-            
-            if (domainEvent is not AuditableEntityCreated auditableEntityCreated) continue;
-            if (_children.ContainsKey(auditableEntityCreated.EntityId)) continue;
-            
-            if (!_entityFields.TryGetValue(domainEvent.FieldId.Value, out var childEntityField))
-                throw new InvalidOperationException($"Property {domainEvent.FieldId.Value} has no child entity field.");
-                
-            if (childEntityField.FieldType is null)
-                throw new InvalidOperationException($"Property {domainEvent.FieldId.Value} has no field type defined.");
-                
-            // Create entity
-            var childEntity = AuditableEntity.GenerateExistingEntity(childEntityField.FieldType, events);
-            _children.TryAdd(childEntity.EntityId, childEntity);
-        }
     }
 }
