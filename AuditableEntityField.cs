@@ -69,6 +69,7 @@ public sealed class AuditableEntityField<T> : AuditableFieldBase where T : IAudi
                 value.SetParentEntityId(EntityId);
                 value.SetFieldId(FieldId);
                 AddDomainEvent(new AuditableEntityAdded(
+                    value.GetAggregateRootId(),
                     Ulid.NewUlid(),
                     value.GetEntityId(),
                     FieldId,

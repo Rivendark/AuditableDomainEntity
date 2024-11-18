@@ -24,5 +24,5 @@ public class TestChildEntity : AuditableEntity
 
     public TestChildEntity() { }
 
-    public TestChildEntity(Ulid entityId, List<IDomainEntityEvent> events) : base(entityId, events) { }
+    public TestChildEntity(AggregateRootId id, Ulid entityId, List<IDomainEntityEvent> events) : base(id, entityId, events) { }
 }

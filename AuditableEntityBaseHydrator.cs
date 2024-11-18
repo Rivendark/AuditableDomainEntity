@@ -13,7 +13,7 @@ public abstract partial class AuditableEntityBase
     private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _entityChanges = new();
     private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _events = new();
     
-    protected AuditableEntityBase(Ulid entityId, List<IDomainEntityEvent>? events)
+    protected AuditableEntityBase(AggregateRootId id, Ulid entityId, List<IDomainEntityEvent>? events)
     {
         EntityType = GetType();
         if (events == null || events.Count == 0) return;
@@ -35,22 +35,13 @@ public abstract partial class AuditableEntityBase
 
     #region Finalize
 
-    public void FinalizeChanges(AggregateRootId aggregateRootId)
-    {
-        FinalizeChangesInternal(aggregateRootId);
-        foreach (var entity in _children.Values)
-        {
-            entity?.FinalizeChanges(aggregateRootId);
-        }
-    }
-
     protected virtual AuditableEntityCreated CreateAuditableEntityCreated(
         AggregateRootId aggregateRootId,
         List<IDomainValueFieldEvent> valueFieldEvents,
         List<IDomainEntityFieldEvent> entityFieldEvents)
     {
         return new AuditableEntityCreated(
-            aggregateRootId,
+            Id,
             Ulid.NewUlid(),
             EntityId,
             EntityType,
@@ -68,7 +59,7 @@ public abstract partial class AuditableEntityBase
         List<IDomainEntityFieldEvent> entityFieldEvents)
     {
         return new AuditableEntityUpdated(
-            aggregateRootId,
+            Id,
             Ulid.NewUlid(),
             EntityId,
             null,
@@ -79,7 +70,7 @@ public abstract partial class AuditableEntityBase
             DateTimeOffset.UtcNow);
     }
 
-    private void FinalizeChangesInternal(AggregateRootId aggregateRootId)
+    protected void FinalizeChangesInternal(AggregateRootId aggregateRootId)
     {
         if (!IsInitialized) throw new InvalidOperationException("Cannot save an entity before the initialization is called.");
         var entityFieldChanges = GetEntityFieldChanges();
@@ -167,16 +158,16 @@ public abstract partial class AuditableEntityBase
                 || domainEvent.ParentId != EntityId) continue;
             
             if (domainEvent is not AuditableEntityCreated auditableEntityCreated) continue;
-            if (_children.ContainsKey(auditableEntityCreated.EntityId)) continue;
+            if (Children.ContainsKey(auditableEntityCreated.EntityId)) continue;
                 
             // Create entity
-            var childEntity = AuditableEntity.GenerateExistingEntity(auditableEntityCreated.EntityType, domainEvent.EntityId, events);
+            var childEntity = AuditableEntity.GenerateExistingEntity(auditableEntityCreated.EntityType, Id, domainEvent.EntityId, events);
             if (childEntity == null)
                 throw new InvalidOperationException(
                     $"Failed to generate child entity. EntityId: {domainEvent.EntityId}. " +
                     $"Type: {auditableEntityCreated.EntityType.Name}");
             
-            _children.TryAdd(childEntity.EntityId, childEntity);
+            Children.TryAdd(childEntity.EntityId, childEntity);
         }
     }
     
@@ -265,7 +256,7 @@ public abstract partial class AuditableEntityBase
                 var entityFieldWithHistory = AuditableFieldRoot.GenerateExistingEntityField(
                     typeof(AuditableEntityField<>),
                     domainEvents,
-                    _children,
+                    Children,
                     property.PropertyType);
                 _entityFields.TryAdd(entityFieldWithHistory.FieldId, entityFieldWithHistory);
                 return;

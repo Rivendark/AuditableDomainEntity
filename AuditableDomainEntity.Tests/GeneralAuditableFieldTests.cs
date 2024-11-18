@@ -169,6 +169,7 @@ public class GeneralAuditableFieldTests
         Assert.NotNull(instantiatedChanges);
         Assert.Empty(instantiatedChanges);
         
+        Assert.NotNull(historyTestClass.Child);
         Assert.Equal(entityTestClass.Child.IntProperty, historyTestClass.Child.IntProperty);
         Assert.Equal(entityTestClass.StringProperty, historyTestClass.StringProperty);
     }

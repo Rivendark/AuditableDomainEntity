@@ -9,5 +9,6 @@ public interface IAuditableChildEntity
     Ulid? GetFieldId();
     void Attach(Ulid parent, string propertyName);
     bool Initialized();
+    AggregateRootId GetAggregateRootId();
     void FinalizeChanges(AggregateRootId aggregateRootId);
 }

@@ -4,23 +4,23 @@ namespace AuditableDomainEntity;
 
 public abstract class AuditableAggregateRootEntity : AuditableEntityBase
 {
-    public AggregateRootId Id { get; init; }
-
     protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId, List<IDomainEntityEvent>? events)
-        : base(aggregateRootId.Value, events)
+        : base(aggregateRootId, aggregateRootId.Value, events)
     {
         ValidateAggregateRootId(aggregateRootId);
-        Id = aggregateRootId;
     }
 
-    protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId) : base(aggregateRootId.Value)
+    protected AuditableAggregateRootEntity(AggregateRootId aggregateRootId) : base(aggregateRootId, aggregateRootId.Value)
     {
         ValidateAggregateRootId(aggregateRootId);
-        Id = aggregateRootId;
     }
 
     public void FinalizeChanges()
     {
-        FinalizeChanges(Id);
+        FinalizeChangesInternal(Id);
+        foreach (var entity in Children.Values)
+        {
+            entity?.FinalizeChanges(Id);
+        }
     }
 }

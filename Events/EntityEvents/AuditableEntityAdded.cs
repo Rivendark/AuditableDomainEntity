@@ -3,6 +3,7 @@
 namespace AuditableDomainEntity.Events.EntityEvents;
 
 public record AuditableEntityAdded(
+    AggregateRootId Id,
     Ulid EventId,
     Ulid EntityId,
     Ulid FieldId,

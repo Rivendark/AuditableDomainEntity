@@ -5,12 +5,10 @@ namespace AuditableDomainEntity;
 
 public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEntity
 {
-    private Ulid? ParentEntityId { get; set; }
-    private Ulid? FieldId { get; set; }
-
-    public AuditableEntity(Ulid entityid, List<IDomainEntityEvent> events) : base(entityid, events)
+    public AuditableEntity(AggregateRootId id, Ulid entityId, List<IDomainEntityEvent> events) : base(id, entityId, events)
     {
-        var entityCreatedEvent = events.First(x => x.EntityId == entityid && x is AuditableEntityCreated);
+        // TODO fix where this information is kept and loaded
+        var entityCreatedEvent = events.First(x => x.EntityId == entityId && x is AuditableEntityCreated);
         ParentEntityId = entityCreatedEvent.ParentId;
         FieldId = entityCreatedEvent.FieldId;
     }
@@ -53,18 +51,33 @@ public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEnti
     {
         return IsInitialized;
     }
-    
+
+    public AggregateRootId GetAggregateRootId()
+    {
+        return Id;
+    }
+
     public static AuditableEntity? GenerateExistingEntity(
         Type entityType,
+        AggregateRootId id,
         Ulid entityId,
         List<IDomainEntityEvent> domainEntityEvents)
     {
         if (!entityType.IsSubclassOf(typeof(AuditableEntity)))
             throw new ArgumentException($"Entity type must be a subclass of AuditableEntityBase. Given: {entityType.Name}");
         
-        dynamic entity = Activator.CreateInstance(entityType, entityId, domainEntityEvents)
+        dynamic entity = Activator.CreateInstance(entityType, id, entityId, domainEntityEvents)
                          ?? throw new InvalidOperationException($"Failed to create entity of type {entityType.Name}");
         return (AuditableEntity)entity;
+    }
+    
+    public void FinalizeChanges(AggregateRootId aggregateRootId)
+    {
+        FinalizeChangesInternal(aggregateRootId);
+        foreach (var entity in Children.Values)
+        {
+            entity?.FinalizeChanges(aggregateRootId);
+        }
     }
     
     protected override AuditableEntityCreated CreateAuditableEntityCreated(

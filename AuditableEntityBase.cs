@@ -7,18 +7,22 @@ namespace AuditableDomainEntity;
 
 public abstract partial class AuditableEntityBase
 {
+    public AggregateRootId Id { get; private set; }
     protected Ulid EntityId { get; set; } = Ulid.NewUlid();
     protected Type EntityType { get; }
+    protected Ulid? ParentEntityId { get; set; }
+    protected Ulid? FieldId { get; set; }
     protected bool IsInitialized;
-    private bool _isDirty;
+    protected readonly Dictionary<Ulid, IAuditableChildEntity?> Children = new();
     protected int Version;
+    private bool _isDirty;
     private readonly Dictionary<string, Ulid> _propertyIds = new();
     private readonly Dictionary<Ulid, AuditableFieldRoot> _entityFields = new();
     private readonly Dictionary<Ulid, AuditableFieldRoot> _valueFields = new();
-    private readonly Dictionary<Ulid, IAuditableChildEntity?> _children = new();
 
-    protected AuditableEntityBase(Ulid entityId)
+    protected AuditableEntityBase(AggregateRootId id, Ulid entityId)
     {
+        Id = id;
         EntityType = GetType();
         EntityId = entityId;
         InitializeNewProperties();
@@ -27,14 +31,22 @@ public abstract partial class AuditableEntityBase
 
     protected AuditableEntityBase()
     {
-        EntityType = GetType();
+        Id = new AggregateRootId(Ulid.NewUlid(), GetType());
+        EntityId = Id.Value;
+        EntityType = Id.EntityType;
+        if (!EntityType.IsSubclassOf(typeof(AuditableAggregateRootEntity)))
+        {
+            EntityId = Ulid.NewUlid();
+        }
+        InitializeNewProperties();
+        IsInitialized = true;
     }
 
     private void AttachChild(IAuditableChildEntity? child, string propertyName)
     {
         if (child == null) throw new NullReferenceException(nameof(child));
         child.Attach(EntityId, propertyName);
-        _children.TryAdd(child.GetEntityId(), child);
+        Children.TryAdd(child.GetEntityId(), child);
     }
 
     protected void SetValue<T>(T? value, string propertyName)
@@ -144,9 +156,11 @@ public abstract partial class AuditableEntityBase
         switch (domainEvent)
         {
             case AuditableEntityCreated auditableEntityCreated:
+                Id = auditableEntityCreated.Id;
                 EntityId = auditableEntityCreated.EntityId;
                 Version = auditableEntityCreated.EventVersion;
-                
+                ParentEntityId = auditableEntityCreated.ParentId;
+                FieldId = auditableEntityCreated.FieldId;
                 LoadEntityHistory(domainEvent);
                 break;
             case AuditableEntityDeleted auditableEntityDeleted:
@@ -213,7 +227,7 @@ public abstract partial class AuditableEntityBase
             events.AddRange(entityEvents);
         }
 
-        foreach (var entity in _children.Values.OfType<AuditableEntity>())
+        foreach (var entity in Children.Values.OfType<AuditableEntity>())
         {
             events.AddRange(entity.GetEntityChanges());
         }
