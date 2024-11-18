@@ -7,8 +7,8 @@ namespace AuditableDomainEntity;
 
 public abstract partial class AuditableEntityBase
 {
-    public Ulid EntityId { get; protected set; } = Ulid.NewUlid();
-    public Type EntityType { get; protected set; }
+    protected Ulid EntityId { get; set; } = Ulid.NewUlid();
+    protected Type EntityType { get; }
     protected bool IsInitialized;
     private bool _isDirty;
     protected int Version;
@@ -39,74 +39,8 @@ public abstract partial class AuditableEntityBase
 
     protected void SetValue<T>(T? value, string propertyName)
     {
-        switch (value)
-        {
-            case ValueType:
-                SetValueType(value, propertyName);
-                return;
-            case null:
-                switch (typeof(T))
-                {
-                    case { IsValueType: true }:
-                        SetValueType(value, propertyName);
-                        return;
-                }
-                break;
-        }
-    }
-
-    protected void SetEntity<T>(T? value, string propertyName) where T : IAuditableChildEntity?
-    {
-        switch (value)
-        {
-            case {}:
-                SetValueEntity(value, propertyName);
-                return;
-            case null:
-                switch (typeof(T))
-                {
-                    case { IsValueType: false }:
-                        SetValueEntity<T>(propertyName);
-                        return;
-                }
-                break;
-        }
-    }
-    
-    protected T? GetValue<T>(string propertyName)
-    {
-        var properties = GetType().GetProperties();
-        foreach (var property in properties)
-        {
-            if (property.Name != propertyName) continue;
-            switch (typeof(T))
-            {
-                case { IsValueType: true }:
-                    return GetValueField<T>(property).FieldValue;
-            }
-        }
-
-        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
-    }
-
-    protected T? GetEntity<T>(string propertyName) where T : IAuditableChildEntity?
-    {
-        var properties = GetType().GetProperties();
-        foreach (var property in properties)
-        {
-            if (property.Name != propertyName) continue;
-            switch (typeof(T))
-            {
-                case { IsValueType: false, IsClass: true }:
-                    return GetEntityField<T>(property).FieldValue;
-            }
-        }
-
-        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
-    }
-    
-    private void SetValueType<T>(T? value, string propertyName)
-    {
+        if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
+            throw new ArgumentException("Value is not an IAuditableChildEntity");
         var properties = GetType().GetProperties();
         foreach (var property in properties)
         {
@@ -126,8 +60,10 @@ public abstract partial class AuditableEntityBase
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
 
-    private void SetValueEntity<T>(T value, string propertyName) where T : IAuditableChildEntity?
+    protected void SetEntity<T>(T? value, string propertyName) where T : IAuditableChildEntity?
     {
+        if (!typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
+            throw new ArgumentException("Value is not an IAuditableChildEntity");
         if (!IsInitialized) return;
         var properties = GetType().GetProperties();
         foreach (var property in properties)
@@ -141,21 +77,36 @@ public abstract partial class AuditableEntityBase
             return;
         }
     }
-
-    private void SetValueEntity<T>(string propertyName) where T : IAuditableChildEntity
+    
+    protected T? GetValue<T>(string propertyName)
     {
-        if (!IsInitialized) return;
+        if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
+            throw new ArgumentException("Value is not an IAuditableChildEntity");
+        
         var properties = GetType().GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
-            var field = GetEntityField<T>(property);
-            field.FieldValue = default;
-            _isDirty = true;
-            
-            return;
+            return GetValueField<T>(property).FieldValue;
         }
-        
+
+        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
+    }
+
+    protected T? GetEntity<T>(string propertyName) where T : IAuditableChildEntity?
+    {
+        var properties = GetType().GetProperties();
+        foreach (var property in properties)
+        {
+            if (property.Name != propertyName) continue;
+            switch (typeof(T))
+            {
+                case { IsValueType: false, IsClass: true }:
+                    return GetEntityField<T>(property).FieldValue;
+            }
+        }
+
+        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
     
     private AuditableValueField<T> GetValueField<T>(PropertyInfo property)
@@ -185,7 +136,7 @@ public abstract partial class AuditableEntityBase
             throw new InvalidOperationException($"PropertyField not found for {property.Name}. {GetType().Name}:{nameof(_entityFields)}");
         }
         
-        return (AuditableEntityField<T>)field;
+        return (AuditableEntityField<T?>)field;
     }
     
     private void ApplyEntityEvent(IDomainEntityEvent domainEvent)

@@ -7,13 +7,6 @@ public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEnti
 {
     private Ulid? ParentEntityId { get; set; }
     private Ulid? FieldId { get; set; }
-    // public string PropertyName { get; protected set; }
-
-    // public AuditableEntity(Ulid entityId, Ulid parentEntityId, string propertyName) : base(entityId)
-    // {
-    //     ParentEntityId = parentEntityId;
-    //     PropertyName = propertyName;
-    // }
 
     public AuditableEntity(Ulid entityid, List<IDomainEntityEvent> events) : base(entityid, events)
     {
