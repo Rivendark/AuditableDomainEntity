@@ -1,9 +1,8 @@
 ﻿using AuditableDomainEntity.Attributes;
-using AuditableDomainEntity.Interfaces;
 
 namespace AuditableDomainEntity.Tests;
 
-public class TestRootEntity : AuditableAggregateRootEntity
+public class TestRootEntity : AuditableRootEntity
 {
     [AuditableEntityField<TestChildEntity>(true)]
     public TestChildEntity? Child
@@ -19,15 +18,13 @@ public class TestRootEntity : AuditableAggregateRootEntity
         set => SetValue<string?>(value, nameof(StringProperty));
     }
     
-    public TestRootEntity(
-        AggregateRootId aggregateRootId,
-        List<IDomainEntityEvent> events)
-        : base(aggregateRootId, events)
-    {
-    }
-
     public TestRootEntity(AggregateRootId aggregateRootId)
         : base(aggregateRootId)
     {
+    }
+
+    public TestRootEntity()
+    {
+        
     }
 }

@@ -8,7 +8,7 @@ namespace AuditableDomainEntity;
 public abstract partial class AuditableEntityBase
 {
     public AggregateRootId AggregateRootId { get; private set; }
-    protected Ulid EntityId { get; set; } = Ulid.NewUlid();
+    protected Ulid EntityId { get; private set; }
     protected Type EntityType { get; }
     protected Ulid? ParentEntityId { get; set; }
     protected Ulid? FieldId { get; set; }
@@ -29,12 +29,12 @@ public abstract partial class AuditableEntityBase
         IsInitialized = true;
     }
 
-    protected AuditableEntityBase()
+    public AuditableEntityBase()
     {
         AggregateRootId = new AggregateRootId(Ulid.NewUlid(), GetType());
         EntityId = AggregateRootId.Value;
         EntityType = AggregateRootId.EntityType;
-        if (!EntityType.IsSubclassOf(typeof(AuditableAggregateRootEntity)))
+        if (!EntityType.IsSubclassOf(typeof(AuditableRootEntity)))
         {
             EntityId = Ulid.NewUlid();
         }
@@ -53,7 +53,7 @@ public abstract partial class AuditableEntityBase
     {
         if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
             throw new ArgumentException("Value is not an IAuditableChildEntity");
-        var properties = GetType().GetProperties();
+        var properties = EntityType.GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
@@ -77,7 +77,7 @@ public abstract partial class AuditableEntityBase
         if (!typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
             throw new ArgumentException("Value is not an IAuditableChildEntity");
         if (!IsInitialized) return;
-        var properties = GetType().GetProperties();
+        var properties = EntityType.GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
@@ -95,7 +95,7 @@ public abstract partial class AuditableEntityBase
         if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
             throw new ArgumentException("Value is not an IAuditableChildEntity");
         
-        var properties = GetType().GetProperties();
+        var properties = EntityType.GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
@@ -107,7 +107,7 @@ public abstract partial class AuditableEntityBase
 
     protected T? GetEntity<T>(string propertyName) where T : IAuditableChildEntity?
     {
-        var properties = GetType().GetProperties();
+        var properties = EntityType.GetProperties();
         foreach (var property in properties)
         {
             if (property.Name != propertyName) continue;
@@ -172,9 +172,17 @@ public abstract partial class AuditableEntityBase
         }
     }
 
+    protected void ValidateAggregateRootId(AggregateRootId aggregateRootId)
+    {
+        if (aggregateRootId.EntityType.IsInstanceOfType(typeof(AuditableRootEntity)))
+        {
+            throw new ArgumentException($"Invalid Aggregate Root given. AggregateRootType: {aggregateRootId.EntityType.Name}, EntityType: {GetType().DeclaringType?.Name ?? GetType().Name}");
+        }
+    }
+
     protected void InitializeNewProperties()
     {
-        var properties = GetType().GetProperties();
+        var properties = EntityType.GetProperties();
         foreach (var property in properties)
         {
             var attributes = property.GetCustomAttributes().ToList();
@@ -209,55 +217,5 @@ public abstract partial class AuditableEntityBase
         dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property.Name)!;
         _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
         _entityFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
-    }
-
-    protected void ValidateAggregateRootId(AggregateRootId aggregateRootId)
-    {
-        if ((GetType().DeclaringType ?? GetType()) != aggregateRootId.EntityType)
-        {
-            throw new ArgumentException($"Invalid Aggregate Root given. AggregateRootType: {aggregateRootId.EntityType.Name}, EntityType: {GetType().DeclaringType?.Name ?? GetType().Name}");
-        }
-    }
-    
-    public List<IDomainEntityEvent> GetEntityChanges()
-    {
-        var events = new List<IDomainEntityEvent>();
-        foreach (var entityEvents in _entityChanges.Values)
-        {
-            events.AddRange(entityEvents);
-        }
-
-        foreach (var entity in Children.Values.OfType<AuditableEntity>())
-        {
-            events.AddRange(entity.GetEntityChanges());
-        }
-
-        return events;
-    }
-
-    private List<IDomainValueFieldEvent> GetValueFieldChanges()
-    {
-        var events = new List<IDomainValueFieldEvent>();
-        foreach (var fieldEvents in _valueFields.Values
-                     .Select(fieldChanges => fieldChanges.GetChanges())
-                     .ToList()
-                 )
-        {
-            events.AddRange(fieldEvents.OfType<IDomainValueFieldEvent>());
-        }
-
-        return events;
-    }
-
-    private List<IDomainEntityFieldEvent> GetEntityFieldChanges()
-    {
-        var events = new List<IDomainEntityFieldEvent>();
-        foreach (var fieldEvents in _entityFields.Values
-                     .Select(fieldChanges => fieldChanges.GetChanges()))
-        {
-            events.AddRange(fieldEvents.OfType<IDomainEntityFieldEvent>());
-        }
-
-        return events;
     }
 }

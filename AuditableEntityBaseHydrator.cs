@@ -12,26 +12,21 @@ public abstract partial class AuditableEntityBase
     private readonly Dictionary<Ulid, List<IDomainValueFieldEvent>> _valueFieldEvents = new();
     private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _entityChanges = new();
     private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _events = new();
-    
-    protected AuditableEntityBase(AggregateRootId aggregateRootId, Ulid entityId, List<IDomainEntityEvent>? events)
+
+    public List<IDomainEntityEvent> GetEntityChanges()
     {
-        AggregateRootId = aggregateRootId;
-        EntityType = GetType();
-        if (events == null || events.Count == 0) return;
-        
-        var initializedEvent = events
-            .FirstOrDefault(e => e is AuditableEntityCreated created 
-                                 && created.EntityId == entityId);
-        
-        if (initializedEvent is null) throw new InvalidOperationException(
-            $"Cannot load an entity history for {entityId}. AuditableEntityCreated event not found.");
-        
-        
-        ApplyEntityEvent(initializedEvent);
-        
-        LoadHistory(events);
-        LoadPropertyHistory();
-        IsInitialized = true;
+        var events = new List<IDomainEntityEvent>();
+        foreach (var entityEvents in _entityChanges.Values)
+        {
+            events.AddRange(entityEvents);
+        }
+
+        foreach (var entity in Children.Values.OfType<AuditableEntity>())
+        {
+            events.AddRange(entity.GetEntityChanges());
+        }
+
+        return events;
     }
 
     #region Finalize
@@ -90,29 +85,45 @@ public abstract partial class AuditableEntityBase
         }
 
         if (entityFieldChanges.Count == 0 && valueFieldChanges.Count == 0) return;
-        
-        _entityChanges.TryAdd(EntityId, []);
-        _entityChanges[EntityId].Add(CreateAuditableEntityUpdated(aggregateRootId, valueFieldChanges, entityFieldChanges));
+
+        if (_isDirty)
+        {
+            _entityChanges.TryAdd(EntityId, []);
+            _entityChanges[EntityId].Add(CreateAuditableEntityUpdated(aggregateRootId, valueFieldChanges, entityFieldChanges));
+        }
             
         CommitFieldChanges();
+    }
+    
+    private List<IDomainValueFieldEvent> GetValueFieldChanges()
+    {
+        var events = new List<IDomainValueFieldEvent>();
+        foreach (var fieldEvents in _valueFields.Values
+                     .Select(fieldChanges => fieldChanges.GetChanges())
+                     .ToList()
+                )
+        {
+            events.AddRange(fieldEvents.OfType<IDomainValueFieldEvent>());
+        }
+
+        return events;
+    }
+
+    private List<IDomainEntityFieldEvent> GetEntityFieldChanges()
+    {
+        var events = new List<IDomainEntityFieldEvent>();
+        foreach (var fieldEvents in _entityFields.Values
+                     .Select(fieldChanges => fieldChanges.GetChanges()))
+        {
+            events.AddRange(fieldEvents.OfType<IDomainEntityFieldEvent>());
+        }
+
+        return events;
     }
 
     #endregion
 
     #region Commit
-
-    private void CommitFieldChanges()
-    {
-        foreach (var field in _entityFields.Values)
-        {
-            field.CommitChanges();
-        }
-
-        foreach (var field in _valueFields.Values)
-        {
-            field.CommitChanges();
-        }
-    }
 
     public void Commit()
     {
@@ -138,11 +149,46 @@ public abstract partial class AuditableEntityBase
         _entityChanges.Clear();
     }
 
+    private void CommitFieldChanges()
+    {
+        foreach (var field in _entityFields.Values)
+        {
+            field.CommitChanges();
+        }
+
+        foreach (var field in _valueFields.Values)
+        {
+            field.CommitChanges();
+        }
+    }
+
     #endregion
 
-    private void LoadHistory(List<IDomainEntityEvent>? events)
+    #region LoadHistory
+
+    protected void LoadHistory(List<IDomainEntityEvent>? events)
     {
         if (events == null || events.Count == 0) return;
+        
+        _propertyIds.Clear();
+        _entityFields.Clear();
+        _valueFields.Clear();
+        
+        _entityChanges.Clear();
+        _entityEvents.Clear();
+        _entityFieldEvents.Clear();
+        _valueFieldEvents.Clear();
+        
+        _events.Clear();
+        
+        var initializedEvent = events
+            .FirstOrDefault(e => e is AuditableEntityCreated created 
+                                 && created.EntityId == EntityId);
+        
+        if (initializedEvent is null) throw new InvalidOperationException(
+            $"Cannot load an entity history for {EntityId}. AuditableEntityCreated event not found.");
+        
+        ApplyEntityEvent(initializedEvent);
         
         foreach (var domainEvent in events.OrderBy(e => e.EventVersion))
         {
@@ -170,6 +216,9 @@ public abstract partial class AuditableEntityBase
             
             Children.TryAdd(childEntity.EntityId, childEntity);
         }
+        
+        LoadPropertyHistory();
+        IsInitialized = true;
     }
     
     private void LoadEntityHistory(IDomainEntityEvent domainEvent)
@@ -208,7 +257,7 @@ public abstract partial class AuditableEntityBase
     
     private void LoadPropertyHistory()
     {
-        var properties = GetType().GetProperties();
+        var properties = EntityType.GetProperties();
         foreach (var property in properties)
         {
             if (CheckHasAttribute(property, typeof(IAuditableValueFieldAttribute)))
@@ -288,4 +337,6 @@ public abstract partial class AuditableEntityBase
         
         return hasAttribute[attributeInterface];
     }
+
+    #endregion
 }

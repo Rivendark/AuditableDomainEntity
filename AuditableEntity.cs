@@ -4,16 +4,10 @@ using AuditableDomainEntity.Interfaces;
 namespace AuditableDomainEntity;
 
 public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEntity
-{
-    public AuditableEntity(AggregateRootId aggregateRootId, Ulid entityId, List<IDomainEntityEvent> events) : base(aggregateRootId, entityId, events)
-    {
-        // TODO fix where this information is kept and loaded
-        var entityCreatedEvent = events.First(x => x.EntityId == entityId && x is AuditableEntityCreated);
-        ParentEntityId = entityCreatedEvent.ParentId;
-        FieldId = entityCreatedEvent.FieldId;
-    }
-
+{ 
     public AuditableEntity() { }
+    
+    public AuditableEntity(AggregateRootId aggregateRootId, Ulid entityId) : base(aggregateRootId, entityId) { }
     
     public Ulid GetEntityId()
     {
@@ -66,8 +60,13 @@ public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEnti
         if (!entityType.IsSubclassOf(typeof(AuditableEntity)))
             throw new ArgumentException($"Entity type must be a subclass of AuditableEntityBase. Given: {entityType.Name}");
         
-        dynamic entity = Activator.CreateInstance(entityType, id, entityId, domainEntityEvents)
+        dynamic entity = Activator.CreateInstance(entityType, id, entityId)
                          ?? throw new InvalidOperationException($"Failed to create entity of type {entityType.Name}");
+
+        if (entity is AuditableEntity auditableEntity)
+        {
+            auditableEntity.LoadHistory(domainEntityEvents);
+        }
         return (AuditableEntity)entity;
     }
     
