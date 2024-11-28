@@ -1,4 +1,6 @@
 ﻿using AuditableDomainEntity.Interfaces;
+using AuditableDomainEntity.Interfaces.Fields;
+using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 
 namespace AuditableDomainEntity.Events.ValueFieldEvents;
 
@@ -11,4 +13,4 @@ public record AuditableValueFieldUpdated<T>(
     T? OldValue,
     T? NewValue,
     DateTimeOffset CreatedAtUtc
-    ) : IDomainValueFieldEvent;
+    ) : IAuditableValueFieldUpdated;

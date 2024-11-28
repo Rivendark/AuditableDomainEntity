@@ -1,4 +1,6 @@
 ﻿using AuditableDomainEntity.Interfaces;
+using AuditableDomainEntity.Interfaces.Fields;
+using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 
 namespace AuditableDomainEntity.Events.ValueFieldEvents;
 
@@ -8,6 +10,6 @@ public record AuditableValueFieldInitialized<T>(
     Ulid EntityId,
     string FieldName,
     int EventVersion,
-    T InitialValue,
+    T? InitialValue,
     DateTimeOffset CreatedAtUtc
-) : IDomainValueFieldEvent;
+) : IAuditableValueFieldInitialized;

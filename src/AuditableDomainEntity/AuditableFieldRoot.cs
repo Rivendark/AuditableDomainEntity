@@ -1,4 +1,7 @@
 ﻿using AuditableDomainEntity.Interfaces;
+using AuditableDomainEntity.Interfaces.Fields;
+using AuditableDomainEntity.Interfaces.Fields.EntityFields;
+using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 using System.Reflection;
 
 namespace AuditableDomainEntity;
@@ -58,6 +61,8 @@ public abstract class AuditableFieldRoot
     }
     
     public bool HasChanges() => _changes.Count > 0;
+    
+    public bool HasEvents() => _events.Count > 0;
 
     public void CommitChanges()
     {

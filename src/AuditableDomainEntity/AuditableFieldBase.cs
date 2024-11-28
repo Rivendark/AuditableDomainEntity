@@ -36,9 +36,9 @@ public abstract class AuditableFieldBase : AuditableFieldRoot
         
     }
 
-    protected void Hydrate(IEnumerable<IDomainEvent> domainEvents)
+    protected void Hydrate()
     {
-        foreach (var domainEvent in domainEvents.OrderBy(x => x.EventVersion))
+        foreach (var domainEvent in GetEvents().OrderBy(x => x.EventVersion))
         {
             Hydrate(domainEvent);
         }

@@ -1,4 +1,4 @@
-﻿namespace AuditableDomainEntity.Interfaces;
+﻿namespace AuditableDomainEntity.Interfaces.Fields.EntityFields;
 
 public interface IDomainEntityFieldEvent : IDomainEvent
 {

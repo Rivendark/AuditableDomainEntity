@@ -153,6 +153,13 @@ public abstract partial class AuditableEntityBase
     
     private void ApplyEntityEvent(IDomainEntityEvent domainEvent)
     {
+        if (!_events.ContainsKey(domainEvent.EntityId))
+        {
+            _events.Add(domainEvent.EntityId, []);
+        }
+        
+        _events[domainEvent.EntityId].Add(domainEvent);
+        
         switch (domainEvent)
         {
             case AuditableEntityCreated auditableEntityCreated:
@@ -164,10 +171,10 @@ public abstract partial class AuditableEntityBase
                 LoadEntityHistory(domainEvent);
                 break;
             case AuditableEntityDeleted auditableEntityDeleted:
-                // TODO
                 break;
             case AuditableEntityUpdated auditableEntityUpdated:
-                // TODO
+                Version = auditableEntityUpdated.EventVersion;
+                LoadEntityHistory(domainEvent);
                 break;
         }
     }

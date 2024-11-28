@@ -1,6 +1,9 @@
 ﻿using AuditableDomainEntity.Events.EntityEvents;
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Interfaces.Attributes;
+using AuditableDomainEntity.Interfaces.Fields;
+using AuditableDomainEntity.Interfaces.Fields.EntityFields;
+using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 using System.Reflection;
 
 namespace AuditableDomainEntity;
@@ -12,163 +15,16 @@ public abstract partial class AuditableEntityBase
     private readonly Dictionary<Ulid, List<IDomainValueFieldEvent>> _valueFieldEvents = new();
     private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _entityChanges = new();
     private readonly Dictionary<Ulid, List<IDomainEntityEvent>> _events = new();
-
-    public List<IDomainEntityEvent> GetEntityChanges()
-    {
-        var events = new List<IDomainEntityEvent>();
-        foreach (var entityEvents in _entityChanges.Values)
-        {
-            events.AddRange(entityEvents);
-        }
-
-        foreach (var entity in Children.Values.OfType<AuditableEntity>())
-        {
-            events.AddRange(entity.GetEntityChanges());
-        }
-
-        return events;
-    }
-
-    #region Finalize
-
-    protected virtual AuditableEntityCreated CreateAuditableEntityCreated(
-        AggregateRootId aggregateRootId,
-        List<IDomainValueFieldEvent> valueFieldEvents,
-        List<IDomainEntityFieldEvent> entityFieldEvents)
-    {
-        return new AuditableEntityCreated(
-            AggregateRootId,
-            Ulid.NewUlid(),
-            EntityId,
-            EntityType,
-            null,
-            null,
-            ++Version,
-            valueFieldEvents,
-            entityFieldEvents,
-            DateTimeOffset.UtcNow);
-    }
-
-    protected virtual AuditableEntityUpdated CreateAuditableEntityUpdated(
-        AggregateRootId aggregateRootId,
-        List<IDomainValueFieldEvent> valueFieldEvents,
-        List<IDomainEntityFieldEvent> entityFieldEvents)
-    {
-        return new AuditableEntityUpdated(
-            AggregateRootId,
-            Ulid.NewUlid(),
-            EntityId,
-            null,
-            null,
-            ++Version,
-            valueFieldEvents,
-            entityFieldEvents,
-            DateTimeOffset.UtcNow);
-    }
-
-    protected void FinalizeChangesInternal(AggregateRootId aggregateRootId)
-    {
-        if (!IsInitialized) throw new InvalidOperationException("Cannot save an entity before the initialization is called.");
-        var entityFieldChanges = GetEntityFieldChanges();
-        var valueFieldChanges = GetValueFieldChanges();
-        if (_entityEvents.Count == 0)
-        {
-            if (!_entityChanges.ContainsKey(aggregateRootId.Value))
-            {
-                _entityChanges.TryAdd(EntityId, [
-                    CreateAuditableEntityCreated(aggregateRootId, valueFieldChanges, entityFieldChanges)
-                ]);
-                
-                CommitFieldChanges();
-                return;
-            }
-        }
-
-        if (entityFieldChanges.Count == 0 && valueFieldChanges.Count == 0) return;
-
-        if (_isDirty)
-        {
-            _entityChanges.TryAdd(EntityId, []);
-            _entityChanges[EntityId].Add(CreateAuditableEntityUpdated(aggregateRootId, valueFieldChanges, entityFieldChanges));
-        }
-            
-        CommitFieldChanges();
-    }
-    
-    private List<IDomainValueFieldEvent> GetValueFieldChanges()
-    {
-        var events = new List<IDomainValueFieldEvent>();
-        foreach (var fieldEvents in _valueFields.Values
-                     .Select(fieldChanges => fieldChanges.GetChanges())
-                     .ToList()
-                )
-        {
-            events.AddRange(fieldEvents.OfType<IDomainValueFieldEvent>());
-        }
-
-        return events;
-    }
-
-    private List<IDomainEntityFieldEvent> GetEntityFieldChanges()
-    {
-        var events = new List<IDomainEntityFieldEvent>();
-        foreach (var fieldEvents in _entityFields.Values
-                     .Select(fieldChanges => fieldChanges.GetChanges()))
-        {
-            events.AddRange(fieldEvents.OfType<IDomainEntityFieldEvent>());
-        }
-
-        return events;
-    }
-
-    #endregion
-
-    #region Commit
-
-    public void Commit()
-    {
-        foreach (var (entityId, events) in _entityChanges)
-        {
-            if (!_events.TryGetValue(entityId, out var currentEvents))
-            {
-                _events.Add(entityId, currentEvents = []);
-            }
-
-            if (EntityId == entityId)
-            {
-                if (!_entityEvents.TryGetValue(entityId, out var currentEventsByEvent))
-                {
-                    _entityEvents.Add(entityId, currentEventsByEvent = []);
-                }
-                currentEventsByEvent.AddRange(events);
-            }
-            
-            currentEvents.AddRange(events);
-        }
-        
-        _entityChanges.Clear();
-    }
-
-    private void CommitFieldChanges()
-    {
-        foreach (var field in _entityFields.Values)
-        {
-            field.CommitChanges();
-        }
-
-        foreach (var field in _valueFields.Values)
-        {
-            field.CommitChanges();
-        }
-    }
-
-    #endregion
+    private readonly List<IDomainEntityEvent> _aggregateEventHistory = new();
 
     #region LoadHistory
 
     protected void LoadHistory(List<IDomainEntityEvent>? events)
     {
         if (events == null || events.Count == 0) return;
+        
+        _aggregateEventHistory.Clear();
+        _aggregateEventHistory.AddRange(events);
         
         _propertyIds.Clear();
         _entityFields.Clear();
@@ -181,7 +37,7 @@ public abstract partial class AuditableEntityBase
         
         _events.Clear();
         
-        var initializedEvent = events
+        var initializedEvent = _aggregateEventHistory
             .FirstOrDefault(e => e is AuditableEntityCreated created 
                                  && created.EntityId == EntityId);
         
@@ -193,6 +49,8 @@ public abstract partial class AuditableEntityBase
         foreach (var domainEvent in events.OrderBy(e => e.EventVersion))
         {
             // Handle Root Entity Events
+            if (domainEvent.EventId == initializedEvent.EventId) continue;
+            
             if (domainEvent.EntityId == EntityId)
             {
                 ApplyEntityEvent(domainEvent);
@@ -232,13 +90,13 @@ public abstract partial class AuditableEntityBase
         value.Add(domainEvent);
         if (domainEvent.ValueFieldEvents != null)
         {
-            foreach (var fieldEvent in domainEvent.ValueFieldEvents)
+            foreach (var valueEvent in domainEvent.ValueFieldEvents)
             {
-                if (!_valueFieldEvents.ContainsKey(fieldEvent.FieldId))
-                    _valueFieldEvents.TryAdd(fieldEvent.FieldId, []);
+                if (!_valueFieldEvents.ContainsKey(valueEvent.FieldId))
+                    _valueFieldEvents.TryAdd(valueEvent.FieldId, []);
 
-                _valueFieldEvents[fieldEvent.FieldId].Add(fieldEvent);
-                _propertyIds.TryAdd(fieldEvent.FieldName, fieldEvent.FieldId);
+                _valueFieldEvents[valueEvent.FieldId].Add(valueEvent);
+                _propertyIds.TryAdd(valueEvent.FieldName, valueEvent.FieldId);
             }
         }
 

@@ -1,5 +1,7 @@
 ﻿using AuditableDomainEntity.Events.EntityEvents;
 using AuditableDomainEntity.Interfaces;
+using AuditableDomainEntity.Interfaces.Fields;
+using AuditableDomainEntity.Interfaces.Fields.EntityFields;
 using AuditableDomainEntity.Types;
 
 namespace AuditableDomainEntity;
@@ -29,7 +31,7 @@ public sealed class AuditableEntityField<T> : AuditableFieldBase where T : IAudi
         if (initializedEvent is null)
             throw new ArgumentException($"Failed to find auditable domain field initialized event for type {GetType().Name}");
         
-        domainEvents.Remove(initializedEvent);
+        SetEvents(domainEvents.Select(IDomainEvent (e) => e).ToList());
         
         var iEvent = initializedEvent as AuditableEntityAdded;
 
@@ -51,12 +53,9 @@ public sealed class AuditableEntityField<T> : AuditableFieldBase where T : IAudi
         _auditableEntities.TryGetValue(iEvent.EntityId, out var existingEntity);
         _value = existingEntity ?? default;
         
-        if (domainEvents.Any())
-            Hydrate(domainEvents);
+        Hydrate();
 
         Status = AuditableDomainFieldStatus.Initialized;
-        
-        SetEvents(domainEvents.Select(IDomainEvent (e) => e).ToList());
     }
 
     private void ApplyValue(T? value)

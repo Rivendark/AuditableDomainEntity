@@ -1,4 +1,6 @@
 ﻿using AuditableDomainEntity.Interfaces;
+using AuditableDomainEntity.Interfaces.Fields;
+using AuditableDomainEntity.Interfaces.Fields.EntityFields;
 
 namespace AuditableDomainEntity.Events.EntityEvents;
 

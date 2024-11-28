@@ -1,15 +1,17 @@
 ﻿using AuditableDomainEntity.Events.ValueFieldEvents;
 using AuditableDomainEntity.Interfaces;
+using AuditableDomainEntity.Interfaces.Fields;
+using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 using AuditableDomainEntity.Types;
 
 namespace AuditableDomainEntity;
 
 public sealed class AuditableValueField<T> : AuditableFieldBase
 {
-    protected T? Value;
+    private T? _value;
     public T? FieldValue
     {
-        get => Value;
+        get => _value;
         set => ApplyValue(value);
     }
 
@@ -32,72 +34,72 @@ public sealed class AuditableValueField<T> : AuditableFieldBase
         if (initializedEvent is null)
             throw new ArgumentException($"Failed to find auditable domain field initialized event for type {GetType().Name}");
         
-        domainEvents.Remove(initializedEvent);
+        SetEvents(domainEvents.Select(IDomainEvent (e) => e).ToList());
         
         var iEvent = initializedEvent as AuditableValueFieldInitialized<T>;
-
-        FieldId = iEvent!.FieldId;
-        FieldType = typeof(T);
-        EntityId = iEvent.EntityId;
-        Name = iEvent.FieldName;
-        Type = AuditableDomainFieldType.Value;
-        Value = iEvent.InitialValue;
-        Version = iEvent.EventVersion;
         
-        if (domainEvents.Any())
-            Hydrate(domainEvents);
+        FieldType = typeof(T);
+        Name = iEvent!.FieldName;
+        Type = AuditableDomainFieldType.Value;
+        
+        Hydrate();
 
         Status = AuditableDomainFieldStatus.Initialized;
-        
-        SetEvents(domainEvents.Select(IDomainEvent (e) => e).ToList());
     }
     
     private void ApplyValue(T? value)
     {
-        if (Value is null && value is null) return;
-        if (Value is null && value is not null)
+        if (!HasEvents())
         {
-            AddDomainEvent(new AuditableValueFieldInitialized<T>(
-                Ulid.NewUlid(),
-                FieldId,
-                EntityId,
-                Name,
-                ++Version,
-                value,
-                DateTimeOffset.UtcNow));
-            Value = value;
+            if (value is not null)
+            {
+                AddDomainEvent(new AuditableValueFieldInitialized<T>(
+                    Ulid.NewUlid(),
+                    FieldId,
+                    EntityId,
+                    Name,
+                    ++Version,
+                    value,
+                    DateTimeOffset.UtcNow));
+                _value = value;
+                return;
+            }
+            
             return;
         }
         
-        if (Value is not null && Value.Equals(value)) return;
-        
+        if (_value is null && value is null) return;
+        if (_value is not null && _value.Equals(value)) return;
+       
         AddDomainEvent(new AuditableValueFieldUpdated<T>(
             Ulid.NewUlid(),
             FieldId,
             EntityId,
             Name,
             ++Version,
-            Value,
+            _value,
             value,
             DateTimeOffset.UtcNow
         ));
         
-        Value = value;
+        _value = value;
     }
     
     protected override void Hydrate(IDomainEvent domainEvent)
     {
-        switch (domainEvent.GetType())
+        switch (domainEvent)
         {
-            case AuditableValueFieldInitialized<T> auditableFieldInitialized:
+            case IAuditableValueFieldInitialized:
+                var auditableFieldInitialized = domainEvent as AuditableValueFieldInitialized<T>;
                 FieldId = auditableFieldInitialized!.FieldId;
                 EntityId = auditableFieldInitialized.EntityId;
-                Value = auditableFieldInitialized.InitialValue;
+                _value = auditableFieldInitialized.InitialValue;
                 Version = auditableFieldInitialized.EventVersion;
                 break;
             
-            case AuditableValueFieldUpdated<T> auditableFieldUpdated:
-                Value = auditableFieldUpdated.NewValue;
+            case IAuditableValueFieldUpdated:
+                var auditableFieldUpdated = domainEvent as AuditableValueFieldUpdated<T>;
+                _value = auditableFieldUpdated!.NewValue;
                 Version = auditableFieldUpdated.EventVersion;
                 break;
         }
