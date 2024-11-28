@@ -27,7 +27,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\AuditableDomainEntity.csproj" />
+      <ProjectReference Include="..\..\src\AuditableDomainEntity\AuditableDomainEntity.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 ﻿using AuditableDomainEntity.Interfaces;
 
-namespace AuditableDomainEntity.Events.FieldEvents;
+namespace AuditableDomainEntity.Events.ValueFieldEvents;
 
 public record AuditableValueFieldUpdated<T>(
     Ulid EventId,

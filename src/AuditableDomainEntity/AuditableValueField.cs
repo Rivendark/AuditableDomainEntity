@@ -1,4 +1,4 @@
-﻿using AuditableDomainEntity.Events.FieldEvents;
+﻿using AuditableDomainEntity.Events.ValueFieldEvents;
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Types;
 

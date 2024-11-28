@@ -1,8 +1,7 @@
 using AuditableDomainEntity.Events.EntityEvents;
-using AuditableDomainEntity.Events.FieldEvents;
-using AuditableDomainEntity.Tests;
+using AuditableDomainEntity.Events.ValueFieldEvents;
 
-namespace AuditableDomainEntity.AuditableDomainEntity.Tests;
+namespace AuditableDomainEntity.Tests;
 
 public class GeneralAuditableFieldTests
 {
