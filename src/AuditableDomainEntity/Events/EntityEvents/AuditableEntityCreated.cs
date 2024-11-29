@@ -12,7 +12,7 @@ public record AuditableEntityCreated(
     Type EntityType,
     Ulid? FieldId,
     Ulid? ParentId,
-    int EventVersion,
+    float EventVersion,
     List<IDomainValueFieldEvent>? ValueFieldEvents,
     List<IDomainEntityFieldEvent>? EntityFieldEvents,
     DateTimeOffset CreatedAtUtc

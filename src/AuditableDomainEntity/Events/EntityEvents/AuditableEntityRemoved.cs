@@ -10,6 +10,6 @@ public record AuditableEntityRemoved(
     Ulid FieldId,
     string FieldName,
     Ulid? ParentId,
-    int EventVersion,
+    float EventVersion,
     DateTimeOffset CreatedAtUtc
     ) : IDomainEntityFieldEvent;

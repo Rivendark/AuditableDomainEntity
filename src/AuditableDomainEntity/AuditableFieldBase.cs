@@ -7,7 +7,7 @@ public abstract class AuditableFieldBase : AuditableFieldRoot
 {
     protected AuditableDomainFieldType Type { get; init; }
     protected AuditableDomainFieldStatus Status { get; set; } = AuditableDomainFieldStatus.Created;
-    protected int Version = 0;
+    protected float Version = 0;
 
     protected AuditableFieldBase(
         Ulid entityId,
@@ -31,10 +31,7 @@ public abstract class AuditableFieldBase : AuditableFieldRoot
         Type = type;
     }
 
-    protected AuditableFieldBase()
-    {
-        
-    }
+    protected AuditableFieldBase() { }
 
     protected void Hydrate()
     {

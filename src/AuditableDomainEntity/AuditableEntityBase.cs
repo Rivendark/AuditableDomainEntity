@@ -7,14 +7,14 @@ namespace AuditableDomainEntity;
 
 public abstract partial class AuditableEntityBase
 {
-    public AggregateRootId AggregateRootId { get; private set; }
+    protected AggregateRootId AggregateRootId { get; private set; }
     protected Ulid EntityId { get; private set; }
     protected Type EntityType { get; }
     protected Ulid? ParentEntityId { get; set; }
     protected Ulid? FieldId { get; set; }
     protected bool IsInitialized;
     protected readonly Dictionary<Ulid, IAuditableChildEntity?> Children = new();
-    protected int Version;
+    protected float Version;
     private bool _isDirty;
     private readonly Dictionary<string, Ulid> _propertyIds = new();
     private readonly Dictionary<Ulid, AuditableFieldRoot> _entityFields = new();
@@ -29,7 +29,7 @@ public abstract partial class AuditableEntityBase
         IsInitialized = true;
     }
 
-    public AuditableEntityBase()
+    protected AuditableEntityBase()
     {
         AggregateRootId = new AggregateRootId(Ulid.NewUlid(), GetType());
         EntityId = AggregateRootId.Value;
@@ -181,7 +181,7 @@ public abstract partial class AuditableEntityBase
 
     protected void ValidateAggregateRootId(AggregateRootId aggregateRootId)
     {
-        if (aggregateRootId.EntityType.IsInstanceOfType(typeof(AuditableRootEntity)))
+        if (typeof(AuditableRootEntity).IsSubclassOf(AggregateRootId.EntityType))
         {
             throw new ArgumentException($"Invalid Aggregate Root given. AggregateRootType: {aggregateRootId.EntityType.Name}, EntityType: {GetType().DeclaringType?.Name ?? GetType().Name}");
         }

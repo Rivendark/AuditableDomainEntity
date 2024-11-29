@@ -9,7 +9,7 @@ public record AuditableValueFieldInitialized<T>(
     Ulid FieldId,
     Ulid EntityId,
     string FieldName,
-    int EventVersion,
+    float EventVersion,
     T? InitialValue,
     DateTimeOffset CreatedAtUtc
 ) : IAuditableValueFieldInitialized;

@@ -9,7 +9,7 @@ public record AuditableValueFieldUpdated<T>(
     Ulid FieldId,
     Ulid EntityId,
     string FieldName,
-    int EventVersion,
+    float EventVersion,
     T? OldValue,
     T? NewValue,
     DateTimeOffset CreatedAtUtc

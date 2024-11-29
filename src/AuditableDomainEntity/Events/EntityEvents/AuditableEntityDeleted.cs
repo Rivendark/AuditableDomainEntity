@@ -9,7 +9,7 @@ public record AuditableEntityDeleted(
     AggregateRootId Id,
     Ulid EventId,
     Ulid EntityId,
-    int EventVersion,
+    float EventVersion,
     DateTimeOffset CreatedAtUtc,
     Ulid? FieldId,
     Ulid? ParentId,

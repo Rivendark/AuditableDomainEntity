@@ -1,7 +1,6 @@
 ﻿using AuditableDomainEntity.Events.EntityEvents;
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Interfaces.Attributes;
-using AuditableDomainEntity.Interfaces.Fields;
 using AuditableDomainEntity.Interfaces.Fields.EntityFields;
 using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 using System.Reflection;
