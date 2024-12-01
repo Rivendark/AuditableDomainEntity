@@ -1,3 +1,3 @@
 ﻿namespace AuditableDomainEntity.Interfaces.Attributes;
 
-public interface IAuditableEntityFieldAttribute;
+public interface IAuditableEntityFieldAttribute : IAuditableFieldAttribute;

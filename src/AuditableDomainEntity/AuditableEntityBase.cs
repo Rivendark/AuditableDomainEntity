@@ -17,8 +17,8 @@ public abstract partial class AuditableEntityBase
     protected float Version;
     private bool _isDirty;
     private readonly Dictionary<string, Ulid> _propertyIds = new();
-    private readonly Dictionary<Ulid, AuditableFieldRoot> _entityFields = new();
-    private readonly Dictionary<Ulid, AuditableFieldRoot> _valueFields = new();
+    private readonly Dictionary<Ulid, AuditableFieldBase> _entityFields = new();
+    private readonly Dictionary<Ulid, AuditableFieldBase> _valueFields = new();
 
     protected AuditableEntityBase(AggregateRootId aggregateRootId, Ulid entityId)
     {
@@ -213,7 +213,7 @@ public abstract partial class AuditableEntityBase
         if (_propertyIds.ContainsKey(property.Name)) return;
         
         var contextType = typeof(AuditableValueField<>).MakeGenericType(property.PropertyType);
-        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property.Name)!;
+        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property)!;
         _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
         _valueFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
     }
@@ -221,7 +221,7 @@ public abstract partial class AuditableEntityBase
     private void LoadEntityField(PropertyInfo property)
     {
         var contextType = typeof(AuditableEntityField<>).MakeGenericType(property.PropertyType);
-        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property.Name)!;
+        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property)!;
         _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
         _entityFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
     }

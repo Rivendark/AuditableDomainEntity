@@ -2,6 +2,7 @@
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 using AuditableDomainEntity.Types;
+using System.Reflection;
 
 namespace AuditableDomainEntity;
 
@@ -13,20 +14,20 @@ public sealed class AuditableValueField<T> : AuditableFieldBase
         get => _value;
         set => ApplyValue(value);
     }
-
-    public AuditableValueField(Ulid fieldId, Ulid entityId, string name)
-        : base(fieldId, entityId, name, AuditableDomainFieldType.Value)
+    
+    public AuditableValueField(Ulid fieldId, Ulid entityId, PropertyInfo property)
+        : base(fieldId, entityId, property, AuditableDomainFieldType.Value)
     {
         FieldType = typeof(T);
     }
 
-    public AuditableValueField(Ulid entityId, string name)
-        : base(entityId, name, AuditableDomainFieldType.Value)
+    public AuditableValueField(Ulid entityId, PropertyInfo property)
+        : base(entityId, property, AuditableDomainFieldType.Value)
     {
         FieldType = typeof(T);
     }
     
-    public AuditableValueField(List<IDomainValueFieldEvent> domainEvents)
+    public AuditableValueField(List<IDomainValueFieldEvent> domainEvents, PropertyInfo property)
     {
         var initializedEvent = domainEvents.FirstOrDefault(x => x is AuditableValueFieldInitialized<T>);
         
@@ -37,8 +38,11 @@ public sealed class AuditableValueField<T> : AuditableFieldBase
         
         var iEvent = initializedEvent as AuditableValueFieldInitialized<T>;
         
+        if (property.Name != iEvent!.FieldName)
+            throw new ArgumentException($"Field name mismatch. Expected {property.Name} but got {iEvent.FieldName}");
+        
         FieldType = typeof(T);
-        Name = iEvent!.FieldName;
+        Name = iEvent.FieldName;
         Type = AuditableDomainFieldType.Value;
         
         Hydrate();
@@ -103,8 +107,4 @@ public sealed class AuditableValueField<T> : AuditableFieldBase
                 break;
         }
     }
-    
-    public new List<IDomainValueFieldEvent> GetChanges() => base.GetChanges()
-        .OfType<IDomainValueFieldEvent>()
-        .ToList();
 }

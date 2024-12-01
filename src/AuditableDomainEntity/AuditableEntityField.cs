@@ -2,6 +2,7 @@
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Interfaces.Fields.EntityFields;
 using AuditableDomainEntity.Types;
+using System.Reflection;
 
 namespace AuditableDomainEntity;
 
@@ -15,27 +16,31 @@ public sealed class AuditableEntityField<T> : AuditableFieldBase where T : IAudi
     }
     
     private readonly Dictionary<Ulid, T> _auditableEntities = new();
-    public AuditableEntityField(Ulid entityId, string name)
-        : base(entityId, name, AuditableDomainFieldType.Entity) { }
+    public AuditableEntityField(Ulid entityId, PropertyInfo property)
+        : base(entityId, property, AuditableDomainFieldType.Entity) { }
 
-    public AuditableEntityField(Ulid fieldId, Ulid entityId, string name)
-        : base(fieldId, entityId, name, AuditableDomainFieldType.Entity) { }
+    public AuditableEntityField(Ulid fieldId, Ulid entityId, PropertyInfo property)
+        : base(fieldId, entityId, property, AuditableDomainFieldType.Entity) { }
     
     public AuditableEntityField(
         List<IDomainEntityFieldEvent> domainEvents,
-        Dictionary<Ulid, IAuditableChildEntity> auditableEntities)
+        Dictionary<Ulid, IAuditableChildEntity> auditableEntities,
+        PropertyInfo property)
     {
         var initializedEvent = domainEvents.OrderBy(e => e.EventVersion).FirstOrDefault(x => x is AuditableEntityAdded);
         
         if (initializedEvent is null)
             throw new ArgumentException($"Failed to find auditable domain field initialized event for type {GetType().Name}");
         
-        SetEvents(domainEvents.Select(IDomainEvent (e) => e).ToList());
-        
         var iEvent = initializedEvent as AuditableEntityAdded;
+        
+        if (property.Name != iEvent!.FieldName)
+            throw new ArgumentException($"Field name mismatch. Expected {property.Name} but got {iEvent.FieldName}");
+        
+        SetEvents(domainEvents.Select(IDomainEvent (e) => e).ToList());
 
         // Load Field Properties
-        FieldId = iEvent!.FieldId;
+        FieldId = iEvent.FieldId;
         FieldType = typeof(T);
         EntityId = iEvent.EntityId;
         Name = iEvent.FieldName;
@@ -103,10 +108,6 @@ public sealed class AuditableEntityField<T> : AuditableFieldBase where T : IAudi
             throw new InvalidCastException($"Cannot convert {value} to {typeof(T)}");
         }
     }
-    
-    public new List<IDomainEntityFieldEvent> GetChanges() => base.GetChanges()
-        .OfType<IDomainEntityFieldEvent>()
-        .ToList()!;
 
     protected override void Hydrate(IDomainEvent domainEvent)
     {

@@ -137,7 +137,7 @@ public abstract partial class AuditableEntityBase
         {
             if (_valueFieldEvents.TryGetValue(fieldId, out var domainEvents))
             {
-                var valueFieldWithHistory = AuditableFieldRoot.GenerateExistingValueField(
+                var valueFieldWithHistory = AuditableFieldBase.GenerateExistingValueField(
                     typeof(AuditableValueField<>),
                     domainEvents,
                     property);
@@ -146,7 +146,7 @@ public abstract partial class AuditableEntityBase
             }
         }
         
-        var valueFieldNew = AuditableFieldRoot.GenerateNewField(
+        var valueFieldNew = AuditableFieldBase.GenerateNewField(
             typeof(AuditableValueField<>),
             EntityId,
             property);
@@ -160,17 +160,17 @@ public abstract partial class AuditableEntityBase
         {
             if (_entityFieldEvents.TryGetValue(fieldId, out var domainEvents))
             {
-                var entityFieldWithHistory = AuditableFieldRoot.GenerateExistingEntityField(
+                var entityFieldWithHistory = AuditableFieldBase.GenerateExistingEntityField(
                     typeof(AuditableEntityField<>),
                     domainEvents,
                     Children,
-                    property.PropertyType);
+                    property);
                 _entityFields.TryAdd(entityFieldWithHistory.FieldId, entityFieldWithHistory);
                 return;
             }
         }
         
-        var entityFieldNew = AuditableFieldRoot.GenerateNewField(
+        var entityFieldNew = AuditableFieldBase.GenerateNewField(
             typeof(AuditableEntityField<>),
             EntityId,
             property);
