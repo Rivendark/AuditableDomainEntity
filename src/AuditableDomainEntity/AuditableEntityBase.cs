@@ -7,7 +7,7 @@ namespace AuditableDomainEntity;
 
 public abstract partial class AuditableEntityBase
 {
-    protected AggregateRootId AggregateRootId { get; private set; }
+    public AggregateRootId AggregateRootId { get; private set; }
     protected Ulid EntityId { get; private set; }
     protected Type EntityType { get; }
     protected Ulid? ParentEntityId { get; set; }

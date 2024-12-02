@@ -16,7 +16,7 @@ public abstract class AuditableFieldBase
     protected AuditableDomainFieldStatus Status { get; set; } = AuditableDomainFieldStatus.Created;
     protected float Version = 0;
     protected PropertyInfo Property { get; init; }
-    protected readonly List<IDomainEvent> Changes = [];
+    private readonly List<IDomainEvent> _changes = [];
     private readonly List<IDomainEvent> _events = [];
 
     protected AuditableFieldBase(
@@ -83,19 +83,19 @@ public abstract class AuditableFieldBase
         _events.AddRange(domainEvents);
     }
     
-    public bool HasChanges() => Changes.Count > 0;
+    public bool HasChanges() => _changes.Count > 0;
     
     public bool HasEvents() => _events.Count > 0;
 
     public void CommitChanges()
     {
-        _events.AddRange(Changes);
-        Changes.Clear();
+        _events.AddRange(_changes);
+        _changes.Clear();
     }
     
-    protected void AddDomainEvent(IDomainEvent domainEvent) => Changes.Add(domainEvent);
+    protected void AddDomainEvent(IDomainEvent domainEvent) => _changes.Add(domainEvent);
     
-    public List<IDomainEvent> GetChanges() => Changes;
+    public List<IDomainEvent> GetChanges() => _changes;
 
     protected void Hydrate()
     {
