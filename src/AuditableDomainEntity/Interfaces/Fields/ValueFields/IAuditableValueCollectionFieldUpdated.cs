@@ -1,0 +1,3 @@
+﻿namespace AuditableDomainEntity.Interfaces.Fields.ValueFields;
+
+public interface IAuditableValueCollectionFieldUpdated : IDomainValueFieldEvent;

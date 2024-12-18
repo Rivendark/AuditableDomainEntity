@@ -117,6 +117,12 @@ public abstract partial class AuditableEntityBase
         var properties = EntityType.GetProperties();
         foreach (var property in properties)
         {
+            if (CheckHasAttribute(property, typeof(IAuditableValueListFieldAttribute)))
+            {
+                LoadValueListFieldHistory(property);
+                continue;
+            }
+
             if (CheckHasAttribute(property, typeof(IAuditableValueFieldAttribute)))
             {
                 LoadValueFieldHistory(property);
@@ -153,6 +159,31 @@ public abstract partial class AuditableEntityBase
         _propertyIds.Add(valueFieldNew.Name, valueFieldNew.FieldId);
         _valueFields.TryAdd(valueFieldNew.FieldId, valueFieldNew);
     }
+    
+    private void LoadValueListFieldHistory(PropertyInfo property)
+    {
+        if (_propertyIds.TryGetValue(property.Name, out var fieldId))
+        {
+            if (_valueFieldEvents.TryGetValue(fieldId, out var domainEvents))
+            {
+                var valueFieldWithHistory = AuditableFieldBase.GenerateExistingListValueField(
+                    typeof(AuditableListValueField<>),
+                    domainEvents,
+                    property);
+                _valueFields.TryAdd(valueFieldWithHistory.FieldId, valueFieldWithHistory);
+                return;
+            }
+        }
+        
+        var valueFieldNew = AuditableFieldBase.GenerateNewField(
+            typeof(AuditableListValueField<>),
+            property.PropertyType.GenericTypeArguments[0],
+            EntityId,
+            property);
+        
+        _propertyIds.Add(valueFieldNew.Name, valueFieldNew.FieldId);
+        _valueFields.TryAdd(valueFieldNew.FieldId, valueFieldNew);
+    }
 
     private void LoadEntityFieldHistory(PropertyInfo property)
     {
@@ -181,9 +212,14 @@ public abstract partial class AuditableEntityBase
     private static bool CheckHasAttribute(PropertyInfo property, Type attributeInterface)
     {
         var hasAttribute = new Dictionary<Type, bool>();
+        
         var hasValueFieldAttribute = property.GetCustomAttributes()
             .Any(a => a is IAuditableValueFieldAttribute);
         hasAttribute.Add(typeof(IAuditableValueFieldAttribute), hasValueFieldAttribute);
+        
+        var hasValueListFieldAttribute = property.GetCustomAttributes()
+            .Any(a => a is IAuditableValueListFieldAttribute);
+        hasAttribute.Add(typeof(IAuditableValueListFieldAttribute), hasValueListFieldAttribute);
         
         var hasEntityFieldAttribute = property.GetCustomAttributes()
             .Any(a => a is IAuditableEntityFieldAttribute);

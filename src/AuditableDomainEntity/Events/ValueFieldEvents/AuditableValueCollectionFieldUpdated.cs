@@ -2,12 +2,14 @@
 
 namespace AuditableDomainEntity.Events.ValueFieldEvents;
 
-public record AuditableValueFieldInitialized<T>(
+public record AuditableValueCollectionFieldUpdated<T>(
     Ulid EventId,
     Ulid FieldId,
     Ulid EntityId,
     string FieldName,
     float EventVersion,
-    T? InitialValue,
-    DateTimeOffset CreatedAtUtc
-) : IAuditableValueFieldInitialized;
+    T[]? AddedValues,
+    T[]? RemovedValues,
+    T[]? CurrentValues,
+    DateTimeOffset CreatedAtUtc)
+    : IAuditableValueCollectionFieldUpdated;

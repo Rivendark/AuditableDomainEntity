@@ -1,4 +1,5 @@
-﻿using AuditableDomainEntity.Events.EntityEvents;
+﻿using AuditableDomainEntity.Collections;
+using AuditableDomainEntity.Events.EntityEvents;
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Interfaces.Attributes;
 using System.Reflection;
@@ -71,6 +72,29 @@ public abstract partial class AuditableEntityBase
 
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
+    
+    protected void SetValueList<T>(AuditableList<T>? value, string propertyName)
+    {
+        if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
+            throw new ArgumentException("Value is not an IAuditableChildEntity");
+        var properties = EntityType.GetProperties();
+        foreach (var property in properties)
+        {
+            if (property.Name != propertyName) continue;
+            if (!IsInitialized)
+            {
+                if (!LoadInitialValueField(property))
+                    throw new InvalidOperationException($"Property {propertyName} can not be initialized");
+            }
+            var auditableDomainField = GetValueListField<T>(property);
+            auditableDomainField.FieldValue = value;
+            _isDirty = true;
+                    
+            return;
+        }
+
+        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
+    }
 
     protected void SetEntity<T>(T? value, string propertyName) where T : IAuditableChildEntity?
     {
@@ -100,6 +124,21 @@ public abstract partial class AuditableEntityBase
         {
             if (property.Name != propertyName) continue;
             return GetValueField<T>(property).FieldValue;
+        }
+
+        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
+    }
+    
+    protected AuditableList<T> GetValueList<T>(string propertyName)
+    {
+        if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
+            throw new ArgumentException("Value is not an IAuditableChildEntity");
+        
+        var properties = EntityType.GetProperties();
+        foreach (var property in properties)
+        {
+            if (property.Name != propertyName) continue;
+            return GetValueListField<T>(property).FieldValue!;
         }
 
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
@@ -134,6 +173,21 @@ public abstract partial class AuditableEntityBase
         }
 
         return (AuditableValueField<T>)field;
+    }
+    
+    private AuditableListValueField<T> GetValueListField<T>(PropertyInfo property)
+    {
+        if (!_propertyIds.TryGetValue(property.Name, out var fieldId))
+        {
+            throw new InvalidOperationException($"Unable to find PropertyId for {property.Name}. {GetType().Name}:{nameof(_propertyIds)}");
+        }
+
+        if (!_valueFields.TryGetValue(fieldId, out var field))
+        {
+            throw new InvalidOperationException($"PropertyField not found for {property.Name}. {GetType().Name}:{nameof(_valueFields)}");
+        }
+
+        return (AuditableListValueField<T>)field;
     }
 
     private AuditableEntityField<T?> GetEntityField<T>(PropertyInfo property) where T : IAuditableChildEntity?
@@ -193,6 +247,8 @@ public abstract partial class AuditableEntityBase
         foreach (var property in properties)
         {
             var attributes = property.GetCustomAttributes().ToList();
+            if (attributes.Any(a => a is IAuditableValueListFieldAttribute))
+                LoadValueListField(property);
             if (attributes.Any(a => a is IAuditableValueFieldAttribute))
                 LoadValueField(property);
             if (attributes.Any(a => a is IAuditableEntityFieldAttribute))
@@ -203,26 +259,60 @@ public abstract partial class AuditableEntityBase
     private bool LoadInitialValueField(PropertyInfo property)
     {
         var attributes = property.GetCustomAttributes().ToList();
-        if (!attributes.Any(a => a is IAuditableValueFieldAttribute)) return false;
-        LoadValueField(property);
+        if (!attributes.Any(a => a is IAuditableValueFieldAttribute
+                or IAuditableValueListFieldAttribute)) return false;
+        
+        if (attributes.Any(a => a is IAuditableValueListFieldAttribute))
+            LoadValueListField(property);
+        
+        if (attributes.Any(a => a is IAuditableValueFieldAttribute))
+            LoadValueField(property);
+        
         return true;
+    }
+
+    private void LoadValueListField(PropertyInfo property)
+    {
+        if (_propertyIds.ContainsKey(property.Name)) return;
+        
+        dynamic auditableDomainField = CreateFieldBase(
+            property,
+            typeof(AuditableListValueField<>),
+            property.PropertyType.GenericTypeArguments[0]);
+        _valueFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
     }
 
     private void LoadValueField(PropertyInfo property)
     {
         if (_propertyIds.ContainsKey(property.Name)) return;
         
-        var contextType = typeof(AuditableValueField<>).MakeGenericType(property.PropertyType);
-        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property)!;
-        _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
+        dynamic auditableDomainField = CreateFieldBase(property, typeof(AuditableValueField<>));
         _valueFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
     }
 
     private void LoadEntityField(PropertyInfo property)
     {
-        var contextType = typeof(AuditableEntityField<>).MakeGenericType(property.PropertyType);
+        if (_propertyIds.ContainsKey(property.Name)) return;
+        
+        dynamic auditableDomainField = CreateFieldBase(property, typeof(AuditableEntityField<>));
+        _entityFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
+    }
+    
+    private AuditableFieldBase CreateFieldBase(PropertyInfo property, Type fieldType)
+    {
+        var contextType = fieldType.MakeGenericType(property.PropertyType);
         dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property)!;
         _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
-        _entityFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
+
+        return auditableDomainField;
+    }
+    
+    private AuditableFieldBase CreateFieldBase(PropertyInfo property, Type fieldType, Type genericType)
+    {
+        var contextType = fieldType.MakeGenericType(genericType);
+        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property)!;
+        _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
+
+        return auditableDomainField;
     }
 }

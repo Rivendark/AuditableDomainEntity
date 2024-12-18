@@ -3,30 +3,33 @@
 namespace AuditableDomainEntity.Attributes;
 
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
-public sealed class AuditableValueFieldAttribute<T> : Attribute, IAuditableValueFieldAttribute
+public class AuditableValueListFieldAttribute<T> : Attribute, IAuditableValueListFieldAttribute
 {
     public Type FieldType { get; }
     public T? DefaultValue { get; }
     public bool IsNullable { get; }
-
-    public AuditableValueFieldAttribute()
+    
+    public AuditableValueListFieldAttribute()
     {
         FieldType = typeof(T);
     }
-
-    public AuditableValueFieldAttribute(T? defaultValue)
+    
+    public AuditableValueListFieldAttribute(T? defaultValue)
     {
         DefaultValue = defaultValue;
+        FieldType = typeof(T);
     }
-
-    public AuditableValueFieldAttribute(bool isNullable)
+    
+    public AuditableValueListFieldAttribute(bool isNullable)
     {
         IsNullable = isNullable;
+        FieldType = typeof(T);
     }
-
-    public AuditableValueFieldAttribute(T? defaultValue, bool isNullable)
+    
+    public AuditableValueListFieldAttribute(T? defaultValue, bool isNullable)
     {
         DefaultValue = defaultValue;
         IsNullable = isNullable;
+        FieldType = typeof(T);
     }
 }

@@ -56,6 +56,33 @@ public abstract class AuditableFieldBase
         var contextType = fieldType.MakeGenericType(property.PropertyType);
         return Activator.CreateInstance(contextType, entityId, property)!;
     }
+    
+    public static dynamic GenerateNewField(Type fieldType, Type genericType, Ulid entityId, PropertyInfo property)
+    {
+        if (!fieldType.IsGenericType) throw new ArgumentException("Field type must be a generic type", nameof(fieldType));
+        var contextType = fieldType.MakeGenericType(genericType);
+        return Activator.CreateInstance(contextType, entityId, property)!;
+    }
+
+    public static dynamic GenerateExistingValueField(
+        Type fieldType,
+        List<IDomainValueFieldEvent> domainEvents,
+        PropertyInfo property)
+    {
+        if (!fieldType.IsGenericType) throw new ArgumentException("Field type must be a generic type", nameof(fieldType));
+        var contextType = fieldType.MakeGenericType(property.PropertyType);
+        return Activator.CreateInstance(contextType, domainEvents, property)!;
+    }
+    
+    public static dynamic GenerateExistingListValueField(
+        Type fieldType,
+        List<IDomainValueFieldEvent> domainEvents,
+        PropertyInfo property)
+    {
+        if (!fieldType.IsGenericType) throw new ArgumentException("Field type must be a generic type", nameof(fieldType));
+        var contextType = fieldType.MakeGenericType(property.PropertyType.GenericTypeArguments[0]);
+        return Activator.CreateInstance(contextType, domainEvents, property)!;
+    }
 
     public static dynamic GenerateExistingEntityField(
         Type fieldType,
@@ -66,16 +93,6 @@ public abstract class AuditableFieldBase
         if (!fieldType.IsGenericType) throw new ArgumentException("Field type must be a generic type", nameof(fieldType));
         var contextType = fieldType.MakeGenericType(property.PropertyType);
         return Activator.CreateInstance(contextType, domainEvents, auditableEntities, property)!;
-    }
-    
-    public static dynamic GenerateExistingValueField(
-        Type fieldType,
-        List<IDomainValueFieldEvent> domainEvents,
-        PropertyInfo property)
-    {
-        if (!fieldType.IsGenericType) throw new ArgumentException("Field type must be a generic type", nameof(fieldType));
-        var contextType = fieldType.MakeGenericType(property.PropertyType);
-        return Activator.CreateInstance(contextType, domainEvents, property)!;
     }
 
     protected void SetEvents(List<IDomainEvent> domainEvents)
@@ -95,7 +112,7 @@ public abstract class AuditableFieldBase
     
     protected void AddDomainEvent(IDomainEvent domainEvent) => _changes.Add(domainEvent);
     
-    public List<IDomainEvent> GetChanges() => _changes;
+    public virtual List<IDomainEvent> GetChanges() => _changes;
 
     protected void Hydrate()
     {
