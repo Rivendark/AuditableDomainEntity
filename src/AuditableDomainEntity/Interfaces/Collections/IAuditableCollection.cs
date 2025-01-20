@@ -1,17 +1,10 @@
-﻿using System.Collections;
-
-namespace AuditableDomainEntity.Interfaces.Collections;
+﻿namespace AuditableDomainEntity.Interfaces.Collections;
 
 public interface IAuditableCollection<T>
 {
     public bool HasChanges();
     
-    public void TryAdd(T item);
+    public void SetEntityValues(Ulid entityId, Ulid fieldId, string fieldName);
 
-    public void TryRemove(T item);
-
-
-    public T[]? GetAddedValues();
-
-    public T[]? GetRemovedValues();
+    public List<IDomainEvent> GetChanges();
 }

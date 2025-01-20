@@ -100,6 +100,8 @@ public abstract class AuditableFieldBase
         _events.AddRange(domainEvents);
     }
     
+    protected List<IDomainEvent> GetEvents() => _events.ToList();
+    
     public bool HasChanges() => _changes.Count > 0;
     
     public bool HasEvents() => _events.Count > 0;

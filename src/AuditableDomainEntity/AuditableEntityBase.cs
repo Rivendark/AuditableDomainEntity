@@ -1,4 +1,4 @@
-﻿using AuditableDomainEntity.Collections;
+﻿using AuditableDomainEntity.Collections.Lists;
 using AuditableDomainEntity.Events.EntityEvents;
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Interfaces.Attributes;

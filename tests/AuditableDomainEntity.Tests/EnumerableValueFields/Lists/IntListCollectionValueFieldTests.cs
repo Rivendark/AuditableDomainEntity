@@ -1,6 +1,8 @@
 ﻿using AuditableDomainEntity.Attributes;
-using AuditableDomainEntity.Collections;
+using AuditableDomainEntity.Collections.Lists;
+using AuditableDomainEntity.Events.CollectionEvents.ListEvents;
 using AuditableDomainEntity.Events.EntityEvents;
+using AuditableDomainEntity.Events.ValueFieldEvents;
 
 namespace AuditableDomainEntity.Tests.EnumerableValueFields.Lists;
 
@@ -9,15 +11,17 @@ public class IntListCollectionValueFieldTests
     [Fact]
     public void ValueField_Should_HandleIntListTypes()
     {
+        var nullableList = new List<int>([4, 5, 6]);
         var intListClass = new IntListTestClass
         {
-            NonNullableIntegerList = [1, 2, 3]
+            NonNullableIntegerList = [1, 2, 3],
+            NullableIntegerList = nullableList
         };
 
         intListClass.FinalizeChanges();
 
         Assert.Equal([1, 2, 3], intListClass.NonNullableIntegerList);
-        Assert.Null(intListClass.NullableIntegerList);
+        Assert.Equal([4, 5, 6], intListClass.NullableIntegerList);
         
         var history = intListClass.GetEntityChanges();
         
@@ -33,7 +37,10 @@ public class IntListCollectionValueFieldTests
         Assert.NotNull(auditableEntityCreated);
         Assert.NotNull(auditableEntityCreated.ValueFieldEvents);
         Assert.NotEmpty(auditableEntityCreated.ValueFieldEvents);
-        Assert.Single(auditableEntityCreated.ValueFieldEvents);
+        Assert.Equal(7, auditableEntityCreated.ValueFieldEvents.Count);
+        Assert.Equal(2, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueFieldInitialized<int[]>));
+        Assert.Equal(2, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableListInitialized<int>));
+        Assert.Equal(3, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableListItemAdded<int>));
         
         intListClass.Commit();
         
@@ -41,22 +48,14 @@ public class IntListCollectionValueFieldTests
         
         Assert.NotNull(intListHistoryClass);
         Assert.Equal([1, 2, 3], intListHistoryClass.NonNullableIntegerList);
-        Assert.Null(intListHistoryClass.NullableIntegerList);
+        Assert.Equal([4, 5, 6], intListHistoryClass.NullableIntegerList);
         
-        intListHistoryClass.NullableIntegerList = [4, 5, 6];
-        intListHistoryClass.NonNullableIntegerList.AddRange([7, 8, 9]);
-        intListHistoryClass.NonNullableIntegerList.Remove(1);
-        intListHistoryClass.NullableIntegerList.Add(7);
-        
-        var nonNullableIntegerList = intListHistoryClass.NonNullableIntegerList;
-
-        Assert.NotNull(nonNullableIntegerList);
-        Assert.IsType<AuditableList<int>>(nonNullableIntegerList);
+        intListHistoryClass.NullableIntegerList = null;
         
         intListHistoryClass.FinalizeChanges();
         
-        Assert.Equal([2, 3, 7, 8, 9], intListHistoryClass.NonNullableIntegerList);
-        Assert.Equal([4, 5, 6, 7], intListHistoryClass.NullableIntegerList);
+        Assert.Equal([1, 2, 3], intListHistoryClass.NonNullableIntegerList);
+        Assert.Null(intListHistoryClass.NullableIntegerList);
         
         var history2 = intListHistoryClass.GetEntityChanges();
         
@@ -72,16 +71,22 @@ public class IntListCollectionValueFieldTests
         Assert.NotNull(auditableEntityUpdated);
         Assert.NotNull(auditableEntityUpdated.ValueFieldEvents);
         Assert.NotEmpty(auditableEntityUpdated.ValueFieldEvents);
-        Assert.Equal(3, auditableEntityUpdated.ValueFieldEvents.Count);
+        Assert.Single(auditableEntityUpdated.ValueFieldEvents);
         
         intListHistoryClass.Commit();
         
         history.AddRange(history2);
-        var intListHistoryClass2 = AuditableRootEntity.LoadFromHistory<IntListTestClass>(auditableEntityUpdated.Id, history);
+        
+        var intListHistoryClass2 = AuditableRootEntity.LoadFromHistory<IntListTestClass>(auditableEntityCreated.Id, history);
         
         Assert.NotNull(intListHistoryClass2);
-        Assert.Equal([2, 3, 7, 8, 9], intListHistoryClass2.NonNullableIntegerList);
-        Assert.Equal([4, 5, 6, 7], intListHistoryClass2.NullableIntegerList);
+        Assert.Equal([1, 2, 3], intListHistoryClass2.NonNullableIntegerList);
+        Assert.Null(intListHistoryClass2.NullableIntegerList);
+        
+        intListHistoryClass2.FinalizeChanges();
+        var history3 = intListHistoryClass2.GetEntityChanges();
+        
+        Assert.Empty(history3);
     }
 
     private class IntListTestClass : AuditableRootEntity

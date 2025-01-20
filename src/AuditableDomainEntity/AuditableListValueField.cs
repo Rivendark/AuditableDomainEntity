@@ -1,6 +1,7 @@
-﻿using AuditableDomainEntity.Collections;
+﻿using AuditableDomainEntity.Collections.Lists;
 using AuditableDomainEntity.Events.ValueFieldEvents;
 using AuditableDomainEntity.Interfaces;
+using AuditableDomainEntity.Interfaces.Collections;
 using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 using AuditableDomainEntity.Types;
 using System.Reflection;
@@ -10,6 +11,7 @@ namespace AuditableDomainEntity;
 public sealed class AuditableListValueField<T> : AuditableFieldBase
 {
     private AuditableList<T>? _value;
+    private AuditableList<T>? _holder;
     
     public AuditableList<T>? FieldValue
     {
@@ -51,6 +53,10 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
         FieldType = typeof(T);
         Name = iEvent.FieldName;
         Type = AuditableDomainFieldType.Value;
+
+        var listEvents = domainEvents.OfType<IAuditableListDomainEvent>();
+        
+        _holder = new AuditableList<T>(FieldId, listEvents);
         
         Hydrate();
 
@@ -59,8 +65,12 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
     
     public override List<IDomainEvent> GetChanges()
     {
-        var updatedEvent = _value?.GetChanges(FieldId, EntityId, Name, Version);
-        if (updatedEvent is not null) AddDomainEvent(updatedEvent);
+        var listEvents = _value?.GetChanges();
+        if (listEvents is not null)
+            foreach (var domainEvent in listEvents)
+            {
+                AddDomainEvent(domainEvent);
+            }
 
         return base.GetChanges();
     }
@@ -73,7 +83,7 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
                 var auditableFieldInitialized = domainEvent as AuditableValueFieldInitialized<T[]>;
                 FieldId = auditableFieldInitialized!.FieldId;
                 EntityId = auditableFieldInitialized.EntityId;
-                _value = InstantiateCollection(auditableFieldInitialized.InitialValue);
+                _value = _holder;
                 Version = auditableFieldInitialized.EventVersion;
                 break;
             
@@ -82,22 +92,16 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
                 _value = null;
                 Version = auditableFieldNullified!.EventVersion;
                 break;
-            
-            case IAuditableValueCollectionFieldUpdated:
-                var auditableFieldUpdated = domainEvent as AuditableValueCollectionFieldUpdated<T>;
-                _value = InstantiateCollection(auditableFieldUpdated!.CurrentValues);
-                Version = auditableFieldUpdated.EventVersion;
-                break;
         }
     }
     
-    private void ApplyValue(List<T>? value)
+    private void ApplyValue(AuditableList<T>? value)
     {
         if (!HasEvents())
         {
             if (value is not null)
             {
-                _value = InstantiateCollection(value.ToArray());
+                _value = InstantiateCollection(value);
                 AddDomainEvent(new AuditableValueFieldInitialized<T[]>(
                     Ulid.NewUlid(),
                     FieldId,
@@ -112,6 +116,7 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
         {
             if (value is null && _value is not null)
             {
+                _value.Clear();
                 AddDomainEvent(new AuditableValueIEnumerableNullified<T>(
                     Ulid.NewUlid(),
                     FieldId,
@@ -128,7 +133,7 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
             
             if (_value is null && value is not null)
             {
-                _value = InstantiateCollection(value.ToArray());
+                _value = InstantiateCollection(value);
                 AddDomainEvent(new AuditableValueFieldInitialized<T[]>(
                     Ulid.NewUlid(),
                     FieldId,
@@ -144,15 +149,32 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
             if (_value is null || value is null) return;
             if (_value.Equals(value)) return;
             
-            var toRemove = _value.Except(value).ToList();
-            var toAdd = value.Except(_value).ToList();
-
-            _value.TryUpdate(toAdd, toRemove);
+            _value.Clear();
+            _value.AddRange(value);
         }
     }
     
-    private static AuditableList<T> InstantiateCollection(T[]? collection)
+    private AuditableList<T> InstantiateCollection(AuditableList<T>? list)
     {
-        return new AuditableList<T>(collection);
+        if (_holder is not null)
+        {
+            if (_holder.Count > 0)
+                _holder.Clear();
+            
+            if (list is not null)
+            {
+                _holder.AddRange(list.ToArray());
+                list.SetAsReadOnly();
+            }
+            return _holder;
+        }
+        
+        list ??= [];
+        
+        list.SetEntityValues(EntityId, FieldId, Name);
+
+        _holder = list;
+
+        return list;
     }
 }
