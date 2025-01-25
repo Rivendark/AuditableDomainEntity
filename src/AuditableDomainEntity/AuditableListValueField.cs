@@ -10,10 +10,10 @@ namespace AuditableDomainEntity;
 
 public sealed class AuditableListValueField<T> : AuditableFieldBase
 {
-    private AuditableList<T>? _value;
-    private AuditableList<T>? _holder;
+    private AuditableValueList<T>? _value;
+    private AuditableValueList<T>? _holder;
     
-    public AuditableList<T>? FieldValue
+    public AuditableValueList<T>? FieldValue
     {
         get => _value;
         set => ApplyValue(value);
@@ -54,9 +54,9 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
         Name = iEvent.FieldName;
         Type = AuditableDomainFieldType.Value;
 
-        var listEvents = domainEvents.OfType<IAuditableListDomainEvent>();
+        var listEvents = domainEvents.OfType<IAuditableListDomainEvent>().ToList();
         
-        _holder = new AuditableList<T>(FieldId, listEvents);
+        _holder = new AuditableValueList<T>(FieldId, listEvents);
         
         Hydrate();
 
@@ -95,7 +95,7 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
         }
     }
     
-    private void ApplyValue(AuditableList<T>? value)
+    private void ApplyValue(AuditableValueList<T>? value)
     {
         if (!HasEvents())
         {
@@ -154,7 +154,7 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
         }
     }
     
-    private AuditableList<T> InstantiateCollection(AuditableList<T>? list)
+    private AuditableValueList<T> InstantiateCollection(AuditableValueList<T>? list)
     {
         if (_holder is not null)
         {

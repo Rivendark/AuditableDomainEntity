@@ -1,6 +1,7 @@
 ﻿using AuditableDomainEntity.Attributes;
 using AuditableDomainEntity.Collections.Lists;
 using AuditableDomainEntity.Events.CollectionEvents.ListEvents;
+using AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
 using AuditableDomainEntity.Events.EntityEvents;
 using AuditableDomainEntity.Events.ValueFieldEvents;
 
@@ -39,8 +40,8 @@ public class IntListCollectionValueFieldTests
         Assert.NotEmpty(auditableEntityCreated.ValueFieldEvents);
         Assert.Equal(7, auditableEntityCreated.ValueFieldEvents.Count);
         Assert.Equal(2, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueFieldInitialized<int[]>));
-        Assert.Equal(2, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableListInitialized<int>));
-        Assert.Equal(3, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableListItemAdded<int>));
+        Assert.Equal(2, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueListInitialized<int>));
+        Assert.Equal(3, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueListItemAdded<int>));
         
         intListClass.Commit();
         
@@ -92,14 +93,14 @@ public class IntListCollectionValueFieldTests
     private class IntListTestClass : AuditableRootEntity
     {
         [AuditableValueListField<int>(true)]
-        public AuditableList<int>? NullableIntegerList
+        public AuditableValueList<int>? NullableIntegerList
         {
             get => GetValueList<int>(nameof(NullableIntegerList));
             set => SetValueList<int>(value, nameof(NullableIntegerList));
         }
         
         [AuditableValueListField<int>(false)]
-        public AuditableList<int> NonNullableIntegerList
+        public AuditableValueList<int> NonNullableIntegerList
         {
             get => GetValueList<int>(nameof(NonNullableIntegerList));
             set => SetValueList<int>(value, nameof(NonNullableIntegerList));

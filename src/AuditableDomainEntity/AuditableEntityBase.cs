@@ -73,7 +73,7 @@ public abstract partial class AuditableEntityBase
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
     
-    protected void SetValueList<T>(AuditableList<T>? value, string propertyName)
+    protected void SetValueList<T>(AuditableValueList<T>? value, string propertyName)
     {
         if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
             throw new ArgumentException("Value is not an IAuditableChildEntity");
@@ -129,7 +129,7 @@ public abstract partial class AuditableEntityBase
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
     }
     
-    protected AuditableList<T> GetValueList<T>(string propertyName)
+    protected AuditableValueList<T> GetValueList<T>(string propertyName)
     {
         if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
             throw new ArgumentException("Value is not an IAuditableChildEntity");

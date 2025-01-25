@@ -1,4 +1,4 @@
-﻿using AuditableDomainEntity.Events.CollectionEvents.ListEvents;
+﻿using AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -6,14 +6,14 @@ using System.Runtime.CompilerServices;
 
 namespace AuditableDomainEntity.Collections.Lists;
 
-public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
+public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
 {
     public bool IsSynchronized => false;
     public object SyncRoot => this;
 
-    private T[] _items;
+    protected T[] Items;
     
-    private int _size;
+    protected int Size;
     private int _version;
     private bool _isReadOnly;
     
@@ -22,45 +22,42 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
 #pragma warning restore CA1825
     
     private const int DefaultCapacity = 4;
-    
-    public AuditableList()
+
+    protected AuditableList()
     {
-        AddHydrateMethods();
-        _items = SEmptyArray;
+        Items = SEmptyArray;
         
-        AddDomainEvent(new AuditableListInitialized<T>(
+        AddDomainEvent(new AuditableValueListInitialized<T>(
             Ulid.NewUlid(),
-            _entityId,
-            _fieldId,
-            _fieldName,
-            ++_eventVersion,
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
             [],
             DateTimeOffset.UtcNow));
     }
-    
-    public AuditableList(int capacity)
+
+    protected AuditableList(int capacity)
     {
         if (capacity < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(capacity), "Capacity cannot be negative");
         }
         
-        AddHydrateMethods();
-        _items = capacity == 0 ? SEmptyArray : new T[capacity];
+        Items = capacity == 0 ? SEmptyArray : new T[capacity];
         
-        AddDomainEvent(new AuditableListInitialized<T>(
+        AddDomainEvent(new AuditableValueListInitialized<T>(
             Ulid.NewUlid(),
-            _entityId,
-            _fieldId,
-            _fieldName,
-            ++_eventVersion,
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
             [],
             DateTimeOffset.UtcNow));
     }
-    
-    public AuditableList(IEnumerable<T> collection)
+
+    protected AuditableList(IEnumerable<T> collection)
     {
-        AddHydrateMethods();
         switch (collection)
         {
             case null:
@@ -70,42 +67,42 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
                 int count = c.Count;
                 if (count == 0)
                 {
-                    _items = SEmptyArray;
+                    Items = SEmptyArray;
                 }
                 else
                 {
-                    _items = new T[count];
-                    c.CopyTo(_items, 0);
-                    _size = count;
+                    Items = new T[count];
+                    c.CopyTo(Items, 0);
+                    Size = count;
                 }
                 
-                AddDomainEvent(new AuditableListInitialized<T>(
+                AddDomainEvent(new AuditableValueListInitialized<T>(
                     Ulid.NewUlid(),
-                    _entityId,
-                    _fieldId,
-                    _fieldName,
-                    ++_eventVersion,
-                    _items,
+                    EntityId,
+                    FieldId,
+                    FieldName,
+                    ++EventVersion,
+                    Items,
                     DateTimeOffset.UtcNow));
 
                 break;
             }
             default:
             {
-                _size = 0;
-                _items = SEmptyArray;
+                Size = 0;
+                Items = SEmptyArray;
             
                 foreach (var item in collection)
                 {
                     Add(item);
                 }
                 
-                AddDomainEvent(new AuditableListInitialized<T>(
+                AddDomainEvent(new AuditableValueListInitialized<T>(
                     Ulid.NewUlid(),
-                    _entityId,
-                    _fieldId,
-                    _fieldName,
-                    ++_eventVersion,
+                    EntityId,
+                    FieldId,
+                    FieldName,
+                    ++EventVersion,
                     [],
                     DateTimeOffset.UtcNow));
 
@@ -114,9 +111,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         }
     }
     
-    public static implicit operator AuditableList<T>(List<T> l) => new (l);
-    
-    public int Count => _size;
+    public int Count => Size;
     
     // Gets and sets the capacity of this list.  The capacity is the size of
     // the internal array used to hold items.  When set, the internal
@@ -124,28 +119,28 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     //
     public int Capacity
     {
-        get => _items.Length;
+        get => Items.Length;
         set
         {
-            if (value < _size)
+            if (value < Size)
             {
                 throw new ArgumentOutOfRangeException(nameof(value), "Capacity cannot be less than the size of the list");
             }
 
-            if (value != _items.Length)
+            if (value != Items.Length)
             {
                 if (value > 0)
                 {
                     T[] newItems = new T[value];
-                    if (_size > 0)
+                    if (Size > 0)
                     {
-                        Array.Copy(_items, newItems, _size);
+                        Array.Copy(Items, newItems, Size);
                     }
-                    _items = newItems;
+                    Items = newItems;
                 }
                 else
                 {
-                    _items = SEmptyArray;
+                    Items = SEmptyArray;
                 }
             }
         }
@@ -165,13 +160,13 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
 
         int version = _version;
 
-        for (int i = 0; i < _size; i++)
+        for (int i = 0; i < Size; i++)
         {
             if (version != _version)
             {
                 break;
             }
-            action(_items[i]);
+            action(Items[i]);
         }
 
         if (version != _version)
@@ -197,23 +192,23 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     public void Add(T item)
     {
         _version++;
-        T[] array = _items;
-        int size = _size;
+        T[] array = Items;
+        int size = Size;
         if ((uint)size < (uint)array.Length)
         {
-            _size = size + 1;
+            Size = size + 1;
             array[size] = item;
         }
         else
         {
             AddWithResize(item);
         }
-        AddDomainEvent(new AuditableListItemAdded<T>(
+        AddDomainEvent(new AuditableValueListItemAdded<T>(
             Ulid.NewUlid(),
-            _entityId,
-            _fieldId,
-            _fieldName,
-            ++_eventVersion,
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
             item,
             DateTimeOffset.UtcNow));
     }
@@ -229,13 +224,13 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
                 var count = c.Count;
                 if (count > 0)
                 {
-                    if (_items.Length - _size < count)
+                    if (Items.Length - Size < count)
                     {
-                        Grow(checked(_size + count));
+                        Grow(checked(Size + count));
                     }
 
-                    c.CopyTo(_items, _size);
-                    _size += count;
+                    c.CopyTo(Items, Size);
+                    Size += count;
                     _version++;
                 }
 
@@ -277,11 +272,11 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     [MethodImpl(MethodImplOptions.NoInlining)]
     private void AddWithResize(T item)
     {
-        Debug.Assert(_size == _items.Length);
-        int size = _size;
+        Debug.Assert(Size == Items.Length);
+        int size = Size;
         Grow(size + 1);
-        _size = size + 1;
-        _items[size] = item;
+        Size = size + 1;
+        Items[size] = item;
     }
 
     void IList.Clear()
@@ -289,23 +284,23 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         _version++;
         if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
         {
-            int size = _size;
-            _size = 0;
+            int size = Size;
+            Size = 0;
             if (size > 0)
             {
-                Array.Clear(_items, 0, size); // Clear the elements so that the gc can reclaim the references.
+                Array.Clear(Items, 0, size); // Clear the elements so that the gc can reclaim the references.
             }
         }
         else
         {
-            _size = 0;
+            Size = 0;
         }
-        AddDomainEvent(new AuditableListCleared<T>(
+        AddDomainEvent(new AuditableValueListCleared<T>(
             Ulid.NewUlid(),
-            _entityId,
-            _fieldId,
-            _fieldName,
-            ++_eventVersion,
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
             DateTimeOffset.UtcNow));
     }
     
@@ -323,7 +318,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         // via EqualityComparer<T>.Default.Equals, we
         // only make one virtual call to EqualityComparer.IndexOf.
 
-        return _size != 0 && IndexOf(item) >= 0;
+        return Size != 0 && IndexOf(item) >= 0;
     }
 
     bool IList.Contains(object? value)
@@ -344,7 +339,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     // search.
     //
     public int IndexOf(T item)
-        => Array.IndexOf(_items, item, 0, _size);
+        => Array.IndexOf(Items, item, 0, Size);
 
     int IList.IndexOf(object? value)
     {
@@ -366,9 +361,9 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     //
     public int IndexOf(T item, int index)
     {
-        if (index > _size)
+        if (index > Size)
             throw new IndexOutOfRangeException("Index was out of range. Must be non-negative and less than the size of the collection.");
-        return Array.IndexOf(_items, item, index, _size - index);
+        return Array.IndexOf(Items, item, index, Size - index);
     }
 
     // Returns the index of the first occurrence of a given value in a range of
@@ -382,13 +377,13 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     //
     public int IndexOf(T item, int index, int count)
     {
-        if (index > _size)
+        if (index > Size)
             throw new IndexOutOfRangeException("Index was out of range. Must be non-negative and less than the size of the collection.");
 
-        if (count < 0 || index > _size - count)
+        if (count < 0 || index > Size - count)
             throw new ArgumentOutOfRangeException(nameof(count), "Count must be positive and count must refer to a location within the string/array/collection.");
 
-        return Array.IndexOf(_items, item, index, count);
+        return Array.IndexOf(Items, item, index, count);
     }
 
     // Inserts an element into this list at a given index. The size of the list
@@ -398,25 +393,25 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     public void Insert(int index, T item)
     {
         // Note that insertions at the end are legal.
-        if ((uint)index > (uint)_size)
+        if ((uint)index > (uint)Size)
         {
             throw new ArgumentOutOfRangeException(nameof(index), "Index was out of range. Must be non-negative and less than the size of the collection.");
         }
-        if (_size == _items.Length) Grow(_size + 1);
-        if (index < _size)
+        if (Size == Items.Length) Grow(Size + 1);
+        if (index < Size)
         {
-            Array.Copy(_items, index, _items, index + 1, _size - index);
+            Array.Copy(Items, index, Items, index + 1, Size - index);
         }
-        _items[index] = item;
-        _size++;
+        Items[index] = item;
+        Size++;
         _version++;
         
-        AddDomainEvent(new AuditableListItemInserted<T>(
+        AddDomainEvent(new AuditableValueListItemInserted<T>(
             Ulid.NewUlid(),
-            _entityId,
-            _fieldId,
-            _fieldName,
-            ++_eventVersion,
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
             item,
             index,
             DateTimeOffset.UtcNow));
@@ -424,7 +419,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     
     void IList.Insert(int index, object? value)
     {
-        if ((uint)index > (uint)_size)
+        if ((uint)index > (uint)Size)
         {
             throw new ArgumentOutOfRangeException(nameof(index), "Index was out of range. Must be non-negative and less than the size of the collection.");
         }
@@ -451,7 +446,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
             throw new ArgumentNullException(nameof(collection), "Collection cannot be null");
         }
 
-        if ((uint)index > (uint)_size)
+        if ((uint)index > (uint)Size)
         {
             throw new ArgumentOutOfRangeException(nameof(index), "Index was out of range. Must be non-negative and less than the size of the collection.");
         }
@@ -461,36 +456,36 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
             int count = c.Count;
             if (count > 0)
             {
-                if (_items.Length - _size < count)
+                if (Items.Length - Size < count)
                 {
-                    Grow(checked(_size + count));
+                    Grow(checked(Size + count));
                 }
-                if (index < _size)
+                if (index < Size)
                 {
-                    Array.Copy(_items, index, _items, index + count, _size - index);
+                    Array.Copy(Items, index, Items, index + count, Size - index);
                 }
 
                 // If we're inserting a List into itself, we want to be able to deal with that.
                 if (Equals(this, c))
                 {
                     // Copy first part of _items to insert location
-                    Array.Copy(_items, 0, _items, index, index);
+                    Array.Copy(Items, 0, Items, index, index);
                     // Copy last part of _items back to inserted location
-                    Array.Copy(_items, index + count, _items, index * 2, _size - index);
+                    Array.Copy(Items, index + count, Items, index * 2, Size - index);
                 }
                 else
                 {
-                    c.CopyTo(_items, index);
+                    c.CopyTo(Items, index);
                 }
-                _size += count;
+                Size += count;
                 _version++;
                 
-                AddDomainEvent(new AuditableListRangeInserted<T>(
+                AddDomainEvent(new AuditableValueListRangeInserted<T>(
                     Ulid.NewUlid(),
-                    _entityId,
-                    _fieldId,
-                    _fieldName,
-                    ++_eventVersion,
+                    EntityId,
+                    FieldId,
+                    FieldName,
+                    ++EventVersion,
                     c,
                     index,
                     DateTimeOffset.UtcNow));
@@ -541,29 +536,29 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
             throw new ArgumentOutOfRangeException(nameof(count), "Count must be positive and count must refer to a location within the string/array/collection.");
         }
 
-        if (_size - index < count)
+        if (Size - index < count)
             throw new AggregateException("Invalid offset length");
 
         if (count > 0)
         {
-            _size -= count;
-            if (index < _size)
+            Size -= count;
+            if (index < Size)
             {
-                Array.Copy(_items, index + count, _items, index, _size - index);
+                Array.Copy(Items, index + count, Items, index, Size - index);
             }
 
             _version++;
             if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
             {
-                Array.Clear(_items, _size, count);
+                Array.Clear(Items, Size, count);
             }
             
-            AddDomainEvent(new AuditableListRangeRemoved<T>(
+            AddDomainEvent(new AuditableValueListRangeRemoved<T>(
                 Ulid.NewUlid(),
-                _entityId,
-                _fieldId,
-                _fieldName,
-                ++_eventVersion,
+                EntityId,
+                FieldId,
+                FieldName,
+                ++EventVersion,
                 index,
                 count,
                 DateTimeOffset.UtcNow));
@@ -575,27 +570,27 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     // decreased by one.
     public void RemoveAt(int index)
     {
-        if ((uint)index >= (uint)_size)
+        if ((uint)index >= (uint)Size)
         {
             throw new ArgumentOutOfRangeException(nameof(index), "Index was out of range. Must be non-negative and less than the size of the collection.");
         }
-        _size--;
-        if (index < _size)
+        Size--;
+        if (index < Size)
         {
-            Array.Copy(_items, index + 1, _items, index, _size - index);
+            Array.Copy(Items, index + 1, Items, index, Size - index);
         }
         if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
         {
-            _items[_size] = default!;
+            Items[Size] = default!;
         }
         _version++;
         
-        AddDomainEvent(new AuditableListRemoveAt<T>(
+        AddDomainEvent(new AuditableValueListRemoveAt<T>(
             Ulid.NewUlid(),
-            _entityId,
-            _fieldId,
-            _fieldName,
-            ++_eventVersion,
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
             index,
             DateTimeOffset.UtcNow));
     }
@@ -614,13 +609,13 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
             throw new ArgumentOutOfRangeException(nameof(count), "Count must be positive and count must refer to a location within the string/array/collection.");
         }
 
-        if (_size - index < count)
+        if (Size - index < count)
         {
             throw new AggregateException("Invalid offset length");
         }
 
         var list = new T[count];
-        Array.Copy(_items, index, list, 0, count);
+        Array.Copy(Items, index, list, 0, count);
         return [..list];
     }
 
@@ -639,24 +634,24 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         _version++;
         if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())
         {
-            int size = _size;
-            _size = 0;
+            int size = Size;
+            Size = 0;
             if (size > 0)
             {
-                Array.Clear(_items, 0, size); // Clear the elements so that the gc can reclaim the references.
+                Array.Clear(Items, 0, size); // Clear the elements so that the gc can reclaim the references.
             }
         }
         else
         {
-            _size = 0;
+            Size = 0;
         }
         
-        AddDomainEvent(new AuditableListCleared<T>(
+        AddDomainEvent(new AuditableValueListCleared<T>(
             Ulid.NewUlid(),
-            _entityId,
-            _fieldId,
-            _fieldName,
-            ++_eventVersion,
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
             DateTimeOffset.UtcNow));
     }
 
@@ -677,7 +672,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         try
         {
             // Array.Copy will check for NULL.
-            Array.Copy(_items, 0, array!, arrayIndex, _size);
+            Array.Copy(Items, 0, array!, arrayIndex, Size);
         }
         catch (ArrayTypeMismatchException)
         {
@@ -691,24 +686,24 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
     //
     public void CopyTo(int index, T[] array, int arrayIndex, int count)
     {
-        if (_size - index < count)
+        if (Size - index < count)
         {
             throw new AggregateException("Invalid offset length");
         }
 
         // Delegate rest of error checking to Array.Copy.
-        Array.Copy(_items, index, array, arrayIndex, count);
+        Array.Copy(Items, index, array, arrayIndex, count);
     }
 
     public void CopyTo(T[] array, int arrayIndex)
     {
         // Delegate rest of error checking to Array.Copy.
-        Array.Copy(_items, 0, array, arrayIndex, _size);
+        Array.Copy(Items, 0, array, arrayIndex, Size);
     }
 
-    int ICollection.Count => _size;
+    int ICollection.Count => Size;
 
-    int ICollection<T>.Count => _size;
+    int ICollection<T>.Count => Size;
 
     bool ICollection<T>.IsReadOnly => _isReadOnly;
 
@@ -717,20 +712,20 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         get
         {
             // Following trick can reduce the range check by one
-            if ((uint)index >= (uint)_size)
+            if ((uint)index >= (uint)Size)
             {
                 throw new ArgumentOutOfRangeException(nameof(index), "Index was out of range. Must be non-negative and less than the size of the collection.");
             }
-            return _items[index];
+            return Items[index];
         }
 
         set
         {
-            if ((uint)index >= (uint)_size)
+            if ((uint)index >= (uint)Size)
             {
                 throw new ArgumentOutOfRangeException(nameof(index), "Index was out of range. Must be non-negative and less than the size of the collection.");
             }
-            _items[index] = value;
+            Items[index] = value;
             _version++;
         }
     }
@@ -741,15 +736,15 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         {
             throw new ArgumentOutOfRangeException(nameof(capacity), "Capacity cannot be negative");
         }
-        if (_items.Length < capacity)
+        if (Items.Length < capacity)
         {
             Grow(capacity);
         }
 
-        return _items.Length;
+        return Items.Length;
     }
 
-    int IReadOnlyCollection<T>.Count => _size;
+    int IReadOnlyCollection<T>.Count => Size;
     
     public bool Exists(Predicate<T> match)
         => FindIndex(match) != -1;
@@ -761,11 +756,11 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
             throw new ArgumentNullException(nameof(match));
         }
 
-        for (int i = 0; i < _size; i++)
+        for (int i = 0; i < Size; i++)
         {
-            if (match(_items[i]))
+            if (match(Items[i]))
             {
-                return _items[i];
+                return Items[i];
             }
         }
         return default;
@@ -779,30 +774,30 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         }
 
         List<T> list = new List<T>();
-        for (int i = 0; i < _size; i++)
+        for (int i = 0; i < Size; i++)
         {
-            if (match(_items[i]))
+            if (match(Items[i]))
             {
-                list.Add(_items[i]);
+                list.Add(Items[i]);
             }
         }
         return list;
     }
     
      public int FindIndex(Predicate<T> match)
-            => FindIndex(0, _size, match);
+            => FindIndex(0, Size, match);
 
     public int FindIndex(int startIndex, Predicate<T> match)
-        => FindIndex(startIndex, _size - startIndex, match);
+        => FindIndex(startIndex, Size - startIndex, match);
 
     public int FindIndex(int startIndex, int count, Predicate<T> match)
     {
-        if ((uint)startIndex > (uint)_size)
+        if ((uint)startIndex > (uint)Size)
         {
             throw new ArgumentOutOfRangeException(nameof(startIndex), "Index was out of range. Must be non-negative and less than the size of the collection.");
         }
 
-        if (count < 0 || startIndex > _size - count)
+        if (count < 0 || startIndex > Size - count)
         {
             throw new ArgumentOutOfRangeException(nameof(count), "Count must be positive and count must refer to a location within the string/array/collection.");
         }
@@ -815,7 +810,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         int endIndex = startIndex + count;
         for (int i = startIndex; i < endIndex; i++)
         {
-            if (match(_items[i])) return i;
+            if (match(Items[i])) return i;
         }
         return -1;
     }
@@ -827,18 +822,18 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
             throw new ArgumentNullException(nameof(match));
         }
 
-        for (int i = _size - 1; i >= 0; i--)
+        for (int i = Size - 1; i >= 0; i--)
         {
-            if (match(_items[i]))
+            if (match(Items[i]))
             {
-                return _items[i];
+                return Items[i];
             }
         }
         return default;
     }
 
     public int FindLastIndex(Predicate<T> match)
-        => FindLastIndex(_size - 1, _size, match);
+        => FindLastIndex(Size - 1, Size, match);
 
     public int FindLastIndex(int startIndex, Predicate<T> match)
         => FindLastIndex(startIndex, startIndex + 1, match);
@@ -850,7 +845,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
             throw new ArgumentNullException(nameof(match));
         }
 
-        if (_size == 0)
+        if (Size == 0)
         {
             // Special case for 0 length List
             if (startIndex != -1)
@@ -861,7 +856,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         else
         {
             // Make sure we're not out of range
-            if ((uint)startIndex >= (uint)_size)
+            if ((uint)startIndex >= (uint)Size)
             {
                 throw new ArgumentOutOfRangeException(nameof(startIndex), "Index was out of range. Must be non-negative and less than the size of the collection.");
             }
@@ -876,7 +871,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         int endIndex = startIndex - count;
         for (int i = startIndex; i > endIndex; i--)
         {
-            if (match(_items[i]))
+            if (match(Items[i]))
             {
                 return i;
             }
@@ -886,9 +881,9 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
 
     private void Grow(int capacity)
     {
-        Debug.Assert(_items.Length < capacity);
+        Debug.Assert(Items.Length < capacity);
 
-        var newCapacity = _items.Length == 0 ? DefaultCapacity : 2 * _items.Length;
+        var newCapacity = Items.Length == 0 ? DefaultCapacity : 2 * Items.Length;
 
         // Allow the list to grow to maximum possible capacity (~2G elements) before encountering overflow.
         // Note that this check works even when _items.Length overflowed thanks to the (uint) cast
@@ -931,9 +926,9 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         {
             AuditableList<T> localList = _list;
 
-            if (_version == localList._version && ((uint)_index < (uint)localList._size))
+            if (_version == localList._version && ((uint)_index < (uint)localList.Size))
             {
-                _current = localList._items[_index];
+                _current = localList.Items[_index];
                 _index++;
                 return true;
             }
@@ -947,7 +942,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
                 throw new InvalidOperationException("The list was modified.");
             }
 
-            _index = _list._size + 1;
+            _index = _list.Size + 1;
             _current = default;
             return false;
         }
@@ -958,7 +953,7 @@ public partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<T>
         {
             get
             {
-                if (_index == 0 || _index == _list._size + 1)
+                if (_index == 0 || _index == _list.Size + 1)
                 {
                     throw new InvalidOperationException("Enumeration has either not started or has already finished.");
                 }

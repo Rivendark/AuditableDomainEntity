@@ -1,9 +1,8 @@
-﻿using AuditableDomainEntity.Interfaces;
-using AuditableDomainEntity.Interfaces.Collections;
+﻿using AuditableDomainEntity.Interfaces.Collections;
 
-namespace AuditableDomainEntity.Events.CollectionEvents.ListEvents;
+namespace AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
 
-public record AuditableListRangeInserted<T>(
+public record AuditableValueListRangeInserted<T>(
     Ulid EventId,
     Ulid EntityId,
     Ulid FieldId,
