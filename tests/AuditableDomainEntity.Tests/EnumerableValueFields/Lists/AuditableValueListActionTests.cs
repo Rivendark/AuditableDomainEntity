@@ -8,7 +8,7 @@ public class AuditableValueListActionTests
 {
     private const string FieldName = "TestList";
 
-    private static readonly AuditableValueListInitialized<int> InitializedEvent = new(
+    private static readonly AuditableValueValueListInitialized<int> InitializedEvent = new(
         Ulid.NewUlid(),
         Ulid.NewUlid(),
         Ulid.NewUlid(), 
@@ -17,7 +17,7 @@ public class AuditableValueListActionTests
         [1, 2, 3],
         DateTimeOffset.UtcNow);
 
-    private readonly List<IAuditableListDomainEvent> _events = [InitializedEvent];
+    private readonly List<IAuditableValueListDomainEvent> _events = [InitializedEvent];
 
     private readonly Ulid _fieldId = Ulid.NewUlid();
     private readonly Ulid _entityId = Ulid.NewUlid();
@@ -27,11 +27,11 @@ public class AuditableValueListActionTests
     {
         // Act
         var auditableIntList = new AuditableValueList<int>();
-        auditableIntList.SetEntityValues(_entityId, _fieldId, FieldName);
+        auditableIntList.SetParentFieldValues(_entityId, _fieldId, FieldName);
         
         // Assert
         Assert.Single(auditableIntList.GetChanges());
-        Assert.IsType<AuditableValueListInitialized<int>>(auditableIntList.GetChanges()[0]);
+        Assert.IsType<AuditableValueValueListInitialized<int>>(auditableIntList.GetChanges()[0]);
     }
     
     [Fact]
@@ -39,21 +39,21 @@ public class AuditableValueListActionTests
     {
         // Arrange
         var auditableIntList = new AuditableValueList<int>(InitializedEvent.FieldId, _events);
-        auditableIntList.SetEntityValues(_entityId, _fieldId, FieldName);
+        auditableIntList.SetParentFieldValues(_entityId, _fieldId, FieldName);
         
         // Act
         auditableIntList.Clear();
         
         // Assert
         Assert.Single(auditableIntList.GetChanges());
-        Assert.IsType<AuditableValueListCleared<int>>(auditableIntList.GetChanges()[0]);
+        Assert.IsType<AuditableValueValueListCleared<int>>(auditableIntList.GetChanges()[0]);
         Assert.Empty(auditableIntList);
         
         var history = auditableIntList.GetChanges();
         history.AddRange(_events);
         var auditableListDomainEvents = history
             .OrderBy(e => e.EventVersion)
-            .Select(e => e as IAuditableListDomainEvent)
+            .Select(e => e as IAuditableValueListDomainEvent)
             .ToList();
         
         Assert.NotNull(auditableListDomainEvents);
@@ -68,21 +68,21 @@ public class AuditableValueListActionTests
     {
         // Arrange
         var auditableIntList = new AuditableValueList<int>(InitializedEvent.FieldId, _events);
-        auditableIntList.SetEntityValues(_entityId, _fieldId, FieldName);
+        auditableIntList.SetParentFieldValues(_entityId, _fieldId, FieldName);
         
         // Act
         auditableIntList.Add(4);
         
         // Assert
         Assert.Single(auditableIntList.GetChanges());
-        Assert.IsType<AuditableValueListItemAdded<int>>(auditableIntList.GetChanges()[0]);
+        Assert.IsType<AuditableValueValueListItemAdded<int>>(auditableIntList.GetChanges()[0]);
         Assert.Equal(4, auditableIntList[3]);
         
         var history = auditableIntList.GetChanges();
         history.AddRange(_events);
         var auditableListDomainEvents = history
             .OrderBy(e => e.EventVersion)
-            .Select(e => e as IAuditableListDomainEvent)
+            .Select(e => e as IAuditableValueListDomainEvent)
             .ToList();
         
         Assert.NotNull(auditableListDomainEvents);
@@ -97,21 +97,21 @@ public class AuditableValueListActionTests
     {
         // Arrange
         var auditableIntList = new AuditableValueList<int>(InitializedEvent.FieldId, _events);
-        auditableIntList.SetEntityValues(_entityId, _fieldId, FieldName);
+        auditableIntList.SetParentFieldValues(_entityId, _fieldId, FieldName);
         
         // Act
         auditableIntList.RemoveAt(0);
         
         // Assert
         Assert.Single(auditableIntList.GetChanges());
-        Assert.IsType<AuditableValueListRemoveAt<int>>(auditableIntList.GetChanges()[0]);
+        Assert.IsType<AuditableValueValueListRemoveAt<int>>(auditableIntList.GetChanges()[0]);
         Assert.Equal(2, auditableIntList[0]);
         
         var history = auditableIntList.GetChanges();
         history.AddRange(_events);
         var auditableListDomainEvents = history
             .OrderBy(e => e.EventVersion)
-            .Select(e => e as IAuditableListDomainEvent)
+            .Select(e => e as IAuditableValueListDomainEvent)
             .ToList();
         
         Assert.NotNull(auditableListDomainEvents);
@@ -126,21 +126,21 @@ public class AuditableValueListActionTests
     {
         // Arrange
         var auditableIntList = new AuditableValueList<int>(InitializedEvent.FieldId, _events);
-        auditableIntList.SetEntityValues(_entityId, _fieldId, FieldName);
+        auditableIntList.SetParentFieldValues(_entityId, _fieldId, FieldName);
         
         // Act
         auditableIntList.Insert(1, 4);
         
         // Assert
         Assert.Single(auditableIntList.GetChanges());
-        Assert.IsType<AuditableValueListItemInserted<int>>(auditableIntList.GetChanges()[0]);
+        Assert.IsType<AuditableValueValueListItemInserted<int>>(auditableIntList.GetChanges()[0]);
         Assert.Equal(4, auditableIntList[1]);
         
         var history = auditableIntList.GetChanges();
         history.AddRange(_events);
         var auditableListDomainEvents = history
             .OrderBy(e => e.EventVersion)
-            .Select(e => e as IAuditableListDomainEvent)
+            .Select(e => e as IAuditableValueListDomainEvent)
             .ToList();
         
         Assert.NotNull(auditableListDomainEvents);
@@ -155,14 +155,14 @@ public class AuditableValueListActionTests
     {
         // Arrange
         var auditableIntList = new AuditableValueList<int>(InitializedEvent.FieldId, _events);
-        auditableIntList.SetEntityValues(_entityId, _fieldId, FieldName);
+        auditableIntList.SetParentFieldValues(_entityId, _fieldId, FieldName);
         
         // Act
         auditableIntList.InsertRange(1, [4, 5]);
         
         // Assert
         Assert.Single(auditableIntList.GetChanges());
-        Assert.IsType<AuditableValueListRangeInserted<int>>(auditableIntList.GetChanges()[0]);
+        Assert.IsType<AuditableValueValueListRangeInserted<int>>(auditableIntList.GetChanges()[0]);
         Assert.Equal(4, auditableIntList[1]);
         Assert.Equal(5, auditableIntList[2]);
         
@@ -170,7 +170,7 @@ public class AuditableValueListActionTests
         history.AddRange(_events);
         var auditableListDomainEvents = history
             .OrderBy(e => e.EventVersion)
-            .Select(e => e as IAuditableListDomainEvent)
+            .Select(e => e as IAuditableValueListDomainEvent)
             .ToList();
         
         Assert.NotNull(auditableListDomainEvents);
@@ -185,14 +185,14 @@ public class AuditableValueListActionTests
     {
         // Arrange
         var auditableIntList = new AuditableValueList<int>(InitializedEvent.FieldId, _events);
-        auditableIntList.SetEntityValues(_entityId, _fieldId, FieldName);
+        auditableIntList.SetParentFieldValues(_entityId, _fieldId, FieldName);
         
         // Act
         auditableIntList.RemoveRange(1, 2);
         
         // Assert
         Assert.Single(auditableIntList.GetChanges());
-        Assert.IsType<AuditableValueListRangeRemoved<int>>(auditableIntList.GetChanges()[0]);
+        Assert.IsType<AuditableValueValueListRangeRemoved<int>>(auditableIntList.GetChanges()[0]);
         Assert.Equal(1, auditableIntList[0]);
         Assert.Equal(1, auditableIntList.Count);
         
@@ -200,7 +200,7 @@ public class AuditableValueListActionTests
         history.AddRange(_events);
         var auditableListDomainEvents = history
             .OrderBy(e => e.EventVersion)
-            .Select(e => e as IAuditableListDomainEvent)
+            .Select(e => e as IAuditableValueListDomainEvent)
             .ToList();
         
         Assert.NotNull(auditableListDomainEvents);

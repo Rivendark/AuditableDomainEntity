@@ -1,67 +1,78 @@
 ﻿using AuditableDomainEntity.Collections.Lists;
-using AuditableDomainEntity.Events.ValueFieldEvents;
+using AuditableDomainEntity.Events.EntityFieldEvents;
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Interfaces.Collections;
-using AuditableDomainEntity.Interfaces.Fields.ValueFields;
+using AuditableDomainEntity.Interfaces.Fields.EntityFields;
 using AuditableDomainEntity.Types;
 using System.Reflection;
 
 namespace AuditableDomainEntity;
 
-public sealed class AuditableListValueField<T> : AuditableFieldBase
+public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditableChildEntity
 {
-    private AuditableValueList<T>? _value;
-    private AuditableValueList<T>? _holder;
+    private AuditableEntityList<T>? _value;
+    private AuditableEntityList<T>? _holder;
+    private Dictionary<Ulid, IAuditableChildEntity> _childEntities = new();
     
-    public AuditableValueList<T>? FieldValue
+    public AuditableEntityList<T>? FieldValue
     {
         get => _value;
         set => ApplyValue(value);
     }
-
-    public AuditableListValueField(
+    
+    public AuditableListEntityField(
         Ulid fieldId,
         Ulid entityId,
-        PropertyInfo property)
-        : base(fieldId, entityId, property, AuditableDomainFieldType.ValueCollection)
+        PropertyInfo property,
+        Dictionary<Ulid, IAuditableChildEntity> childEntities)
+        : base(fieldId, entityId, property, AuditableDomainFieldType.EntityCollection)
     {
         FieldType = typeof(T);
+        _childEntities = childEntities;
     }
     
-    public AuditableListValueField(
+    public AuditableListEntityField(
         Ulid entityId,
-        PropertyInfo property)
-        : base(entityId, property, AuditableDomainFieldType.ValueCollection)
+        PropertyInfo property,
+        Dictionary<Ulid, IAuditableChildEntity> childEntities)
+        : base(entityId, property, AuditableDomainFieldType.EntityCollection)
     {
         FieldType = typeof(T);
+        _childEntities = childEntities;
     }
-
-    public AuditableListValueField(List<IDomainValueFieldEvent> domainEvents, PropertyInfo property)
+    
+    public AuditableListEntityField(
+        List<IDomainEntityFieldEvent> domainEvents,
+        PropertyInfo property,
+        Dictionary<Ulid, IAuditableChildEntity> childEntities)
     {
-        var initializedEvent = domainEvents.FirstOrDefault(x => x is AuditableValueFieldInitialized<T[]>);
+        _childEntities = childEntities;
+        var initializedEvent = domainEvents.FirstOrDefault(x => x is AuditableEntityFieldInitialized<T[]>);
         
         if (initializedEvent is null)
             throw new ArgumentException($"Failed to find auditable domain field initialized event for type {GetType().Name}<{FieldType?.Name}>");
         
         SetEvents(domainEvents.Select(IDomainEvent (e) => e).ToList());
         
-        var iEvent = initializedEvent as AuditableValueFieldInitialized<T[]>;
+        var iEvent = initializedEvent as AuditableEntityFieldInitialized<T[]>;
         
         if (property.Name != iEvent!.FieldName)
             throw new ArgumentException($"Field name mismatch. Expected {property.Name} but got {iEvent.FieldName}");
         
         FieldType = typeof(T);
         Name = iEvent.FieldName;
-        Type = AuditableDomainFieldType.Value;
+        Type = AuditableDomainFieldType.Entity;
 
-        var listEvents = domainEvents.OfType<IAuditableValueListDomainEvent>().ToList();
+        var listEvents = domainEvents.OfType<IAuditableEntityListDomainEvent>().ToList();
         
-        _holder = new AuditableValueList<T>(FieldId, listEvents);
+        _holder = new AuditableEntityList<T>(FieldId, listEvents);
         
         Hydrate();
 
         Status = AuditableDomainFieldStatus.Initialized;
     }
+    
+    public List<IAuditableChildEntity> Children => _childEntities.Values.ToList();
     
     public override List<IDomainEvent> GetChanges()
     {
@@ -74,35 +85,15 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
 
         return base.GetChanges();
     }
-    
-    protected override void Hydrate(IDomainEvent domainEvent)
-    {
-        switch (domainEvent)
-        {
-            case IAuditableValueFieldInitialized:
-                var auditableFieldInitialized = domainEvent as AuditableValueFieldInitialized<T[]>;
-                FieldId = auditableFieldInitialized!.FieldId;
-                EntityId = auditableFieldInitialized.EntityId;
-                _value = _holder;
-                Version = auditableFieldInitialized.EventVersion;
-                break;
-            
-            case IAuditableValueCollectionFieldNullified:
-                var auditableFieldNullified = domainEvent as AuditableValueCollectionFieldFieldNullified<T>;
-                _value = null;
-                Version = auditableFieldNullified!.EventVersion;
-                break;
-        }
-    }
-    
-    private void ApplyValue(AuditableValueList<T>? value)
+
+    private void ApplyValue(AuditableEntityList<T>? value)
     {
         if (!HasEvents())
         {
             if (value is not null)
             {
                 _value = InstantiateCollection(value);
-                AddDomainEvent(new AuditableValueFieldInitialized<T[]>(
+                AddDomainEvent(new AuditableEntityFieldInitialized<T[]>(
                     Ulid.NewUlid(),
                     FieldId,
                     EntityId,
@@ -117,7 +108,7 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
             if (value is null && _value is not null)
             {
                 _value.Clear();
-                AddDomainEvent(new AuditableValueCollectionFieldFieldNullified<T>(
+                AddDomainEvent(new AuditableEntityCollectionFieldNullified<T>(
                     Ulid.NewUlid(),
                     FieldId,
                     EntityId,
@@ -134,7 +125,7 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
             if (_value is null && value is not null)
             {
                 _value = InstantiateCollection(value);
-                AddDomainEvent(new AuditableValueFieldInitialized<T[]>(
+                AddDomainEvent(new AuditableEntityFieldInitialized<T[]>(
                     Ulid.NewUlid(),
                     FieldId,
                     EntityId,
@@ -153,8 +144,28 @@ public sealed class AuditableListValueField<T> : AuditableFieldBase
             _value.AddRange(value);
         }
     }
+
+    protected override void Hydrate(IDomainEvent domainEvent)
+    {
+        switch (domainEvent)
+        {
+            case IAuditableEntityFieldInitialized:
+                var auditableFieldInitialized = domainEvent as AuditableEntityFieldInitialized<T[]>;
+                FieldId = auditableFieldInitialized!.FieldId;
+                EntityId = auditableFieldInitialized.EntityId;
+                _value = _holder;
+                Version = auditableFieldInitialized.EventVersion;
+                break;
+            
+            case IAuditableEntityCollectionFieldNullified:
+                var auditableFieldNullified = domainEvent as AuditableEntityCollectionFieldNullified<T>;
+                _value = null;
+                Version = auditableFieldNullified!.EventVersion;
+                break;
+        }
+    }
     
-    private AuditableValueList<T> InstantiateCollection(AuditableValueList<T>? list)
+    private AuditableEntityList<T> InstantiateCollection(AuditableEntityList<T>? list)
     {
         if (_holder is not null)
         {

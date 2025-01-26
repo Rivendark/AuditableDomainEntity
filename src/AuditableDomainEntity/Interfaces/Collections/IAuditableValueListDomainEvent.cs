@@ -2,4 +2,4 @@
 
 namespace AuditableDomainEntity.Interfaces.Collections;
 
-public interface IAuditableListDomainEvent : IDomainValueFieldEvent;
+public interface IAuditableValueListDomainEvent : IDomainValueFieldEvent;

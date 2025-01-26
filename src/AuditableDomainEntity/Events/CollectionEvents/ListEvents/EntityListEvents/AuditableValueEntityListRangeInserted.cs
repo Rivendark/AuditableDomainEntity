@@ -2,13 +2,13 @@
 
 namespace AuditableDomainEntity.Events.CollectionEvents.ListEvents.EntityListEvents;
 
-public record AuditableEntityListRangeRemoved<T>(
+public record AuditableValueEntityListRangeInserted<T>(
     Ulid EventId,
     Ulid EntityId,
     Ulid FieldId,
     string FieldName,
     float EventVersion,
+    ICollection<T> Items,
     int Index,
-    int Count,
     DateTimeOffset CreatedAtUtc
-    ) : IAuditableListDomainEvent;
+    ) : IAuditableEntityListDomainEvent;

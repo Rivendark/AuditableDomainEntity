@@ -2,7 +2,7 @@
 
 namespace AuditableDomainEntity.Events.CollectionEvents.ListEvents.EntityListEvents;
 
-public record AuditableEntityListItemInserted<T>(
+public record AuditableValueEntityListItemInserted<T>(
     Ulid EventId,
     Ulid EntityId,
     Ulid FieldId,
@@ -11,4 +11,4 @@ public record AuditableEntityListItemInserted<T>(
     T Item,
     int Index,
     DateTimeOffset CreatedAtUtc
-    ) : IAuditableListDomainEvent;
+    ) : IAuditableEntityListDomainEvent;

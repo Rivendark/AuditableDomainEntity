@@ -27,7 +27,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
     {
         Items = SEmptyArray;
         
-        AddDomainEvent(new AuditableValueListInitialized<T>(
+        AddDomainEvent(new AuditableValueValueListInitialized<T>(
             Ulid.NewUlid(),
             EntityId,
             FieldId,
@@ -46,7 +46,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         
         Items = capacity == 0 ? SEmptyArray : new T[capacity];
         
-        AddDomainEvent(new AuditableValueListInitialized<T>(
+        AddDomainEvent(new AuditableValueValueListInitialized<T>(
             Ulid.NewUlid(),
             EntityId,
             FieldId,
@@ -76,7 +76,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
                     Size = count;
                 }
                 
-                AddDomainEvent(new AuditableValueListInitialized<T>(
+                AddDomainEvent(new AuditableValueValueListInitialized<T>(
                     Ulid.NewUlid(),
                     EntityId,
                     FieldId,
@@ -97,7 +97,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
                     Add(item);
                 }
                 
-                AddDomainEvent(new AuditableValueListInitialized<T>(
+                AddDomainEvent(new AuditableValueValueListInitialized<T>(
                     Ulid.NewUlid(),
                     EntityId,
                     FieldId,
@@ -203,7 +203,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         {
             AddWithResize(item);
         }
-        AddDomainEvent(new AuditableValueListItemAdded<T>(
+        AddDomainEvent(new AuditableValueValueListItemAdded<T>(
             Ulid.NewUlid(),
             EntityId,
             FieldId,
@@ -295,7 +295,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         {
             Size = 0;
         }
-        AddDomainEvent(new AuditableValueListCleared<T>(
+        AddDomainEvent(new AuditableValueValueListCleared<T>(
             Ulid.NewUlid(),
             EntityId,
             FieldId,
@@ -406,7 +406,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         Size++;
         _version++;
         
-        AddDomainEvent(new AuditableValueListItemInserted<T>(
+        AddDomainEvent(new AuditableValueValueListItemInserted<T>(
             Ulid.NewUlid(),
             EntityId,
             FieldId,
@@ -480,7 +480,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
                 Size += count;
                 _version++;
                 
-                AddDomainEvent(new AuditableValueListRangeInserted<T>(
+                AddDomainEvent(new AuditableValueValueListRangeInserted<T>(
                     Ulid.NewUlid(),
                     EntityId,
                     FieldId,
@@ -553,7 +553,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
                 Array.Clear(Items, Size, count);
             }
             
-            AddDomainEvent(new AuditableValueListRangeRemoved<T>(
+            AddDomainEvent(new AuditableValueValueListRangeRemoved<T>(
                 Ulid.NewUlid(),
                 EntityId,
                 FieldId,
@@ -585,7 +585,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         }
         _version++;
         
-        AddDomainEvent(new AuditableValueListRemoveAt<T>(
+        AddDomainEvent(new AuditableValueValueListRemoveAt<T>(
             Ulid.NewUlid(),
             EntityId,
             FieldId,
@@ -646,7 +646,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
             Size = 0;
         }
         
-        AddDomainEvent(new AuditableValueListCleared<T>(
+        AddDomainEvent(new AuditableValueValueListCleared<T>(
             Ulid.NewUlid(),
             EntityId,
             FieldId,

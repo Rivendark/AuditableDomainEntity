@@ -1,13 +1,12 @@
 ﻿using AuditableDomainEntity.Interfaces.Collections;
 
-namespace AuditableDomainEntity.Events.CollectionEvents.ListEvents.EntityListEvents;
+namespace AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
 
-public record AuditableEntityListRemoveAt<T>(
+public record AuditableValueValueListCleared<T>(
     Ulid EventId,
     Ulid EntityId,
     Ulid FieldId,
     string FieldName,
     float EventVersion,
-    int Index,
     DateTimeOffset CreatedAtUtc
-    ) : IAuditableListDomainEvent;
+    ) : IAuditableValueListDomainEvent;

@@ -114,6 +114,27 @@ public abstract partial class AuditableEntityBase
         }
     }
     
+    protected void SetEntityList<T>(AuditableEntityList<T>? value, string propertyName) where T : IAuditableChildEntity
+    {
+        if (!typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
+            throw new ArgumentException("Value is not an IAuditableChildEntity");
+        var properties = EntityType.GetProperties();
+        foreach (var property in properties)
+        {
+            if (property.Name != propertyName) continue;
+            if (!IsInitialized)
+            {
+                if (!LoadInitialValueField(property))
+                    throw new InvalidOperationException($"Property {propertyName} can not be initialized");
+            }
+            var auditableDomainField = GetEntityListField<T>(property);
+            auditableDomainField.FieldValue = value;
+            _isDirty = true;
+            
+            return;
+        }
+    }
+    
     protected T? GetValue<T>(string propertyName)
     {
         if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
@@ -132,7 +153,7 @@ public abstract partial class AuditableEntityBase
     protected AuditableValueList<T> GetValueList<T>(string propertyName)
     {
         if (typeof(T).IsAssignableTo(typeof(IAuditableChildEntity)))
-            throw new ArgumentException("Value is not an IAuditableChildEntity");
+            throw new ArgumentException("Value can not be of IAuditableChildEntity");
         
         var properties = EntityType.GetProperties();
         foreach (var property in properties)
@@ -155,6 +176,18 @@ public abstract partial class AuditableEntityBase
                 case { IsValueType: false, IsClass: true }:
                     return GetEntityField<T>(property).FieldValue;
             }
+        }
+
+        throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
+    }
+    
+    protected AuditableEntityList<T> GetEntityList<T>(string propertyName) where T : IAuditableChildEntity
+    {
+        var properties = EntityType.GetProperties();
+        foreach (var property in properties)
+        {
+            if (property.Name != propertyName) continue;
+            return GetEntityListField<T>(property).FieldValue!;
         }
 
         throw new InvalidOperationException($"Property {propertyName} is not found in type {GetType().Name}");
@@ -203,6 +236,21 @@ public abstract partial class AuditableEntityBase
         }
         
         return (AuditableEntityField<T?>)field;
+    }
+
+    private AuditableListEntityField<T> GetEntityListField<T>(PropertyInfo property) where T : IAuditableChildEntity
+    {
+        if (!_propertyIds.TryGetValue(property.Name, out var fieldId))
+        {
+            throw new InvalidOperationException($"Unable to find PropertyId for {property.Name}. {GetType().Name}:{nameof(_propertyIds)}");
+        }
+        
+        if (!_entityFields.TryGetValue(fieldId, out var field))
+        {
+            throw new InvalidOperationException($"PropertyField not found for {property.Name}. {GetType().Name}:{nameof(_entityFields)}");
+        }
+        
+        return (AuditableListEntityField<T>)field;
     }
     
     private void ApplyEntityEvent(IDomainEntityEvent domainEvent)

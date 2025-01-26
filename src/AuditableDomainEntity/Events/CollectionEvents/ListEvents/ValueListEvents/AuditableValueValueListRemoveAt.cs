@@ -2,12 +2,12 @@
 
 namespace AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
 
-public record AuditableValueListInitialized<T>(
+public record AuditableValueValueListRemoveAt<T>(
     Ulid EventId,
     Ulid EntityId,
     Ulid FieldId,
     string FieldName,
     float EventVersion,
-    IEnumerable<T> Items,
+    int Index,
     DateTimeOffset CreatedAtUtc
-    ) : IAuditableListDomainEvent;
+    ) : IAuditableValueListDomainEvent;

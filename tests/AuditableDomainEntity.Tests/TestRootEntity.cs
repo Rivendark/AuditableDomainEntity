@@ -1,9 +1,24 @@
 ﻿using AuditableDomainEntity.Attributes;
+using AuditableDomainEntity.Collections.Lists;
 
 namespace AuditableDomainEntity.Tests;
 
 public class TestRootEntity : AuditableRootEntity
 {
+    [AuditableEntityListField<TestChildEntity>(false)]
+    public AuditableEntityList<TestChildEntity> TestChildren
+    {
+        get => GetEntityList<TestChildEntity>(nameof(TestChildren));
+        set => SetEntityList<TestChildEntity>(value, nameof(TestChildren));
+    }
+    
+    [AuditableValueListField<string>(true)]
+    public AuditableValueList<string>? Strings
+    {
+        get => GetValueList<string>(nameof(Strings));
+        set => SetValueList<string>(value, nameof(Strings));
+    }
+    
     [AuditableEntityField<TestChildEntity>(true)]
     public TestChildEntity? Child
     {

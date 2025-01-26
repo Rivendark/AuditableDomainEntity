@@ -14,7 +14,7 @@ public abstract partial class AuditableList<T> : IAuditableCollection<T>
     protected float EventVersion;
     protected readonly Dictionary<Type, Action<IDomainEvent>> Hydrators = new();
 
-    protected AuditableList(Ulid fieldId, IEnumerable<IAuditableListDomainEvent> events)
+    protected AuditableList(Ulid fieldId, IEnumerable<IDomainEvent> events)
     {
         Items = [];
         _events.AddRange(events);
@@ -47,7 +47,7 @@ public abstract partial class AuditableList<T> : IAuditableCollection<T>
         _changes.Add(domainEvent);
     }
     
-    public abstract void SetEntityValues(Ulid entityId, Ulid fieldId, string fieldName);
+    public abstract void SetParentFieldValues(Ulid entityId, Ulid fieldId, string fieldName);
     
     protected abstract void AddHydrateMethods();
 }

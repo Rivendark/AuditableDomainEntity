@@ -2,12 +2,13 @@
 
 namespace AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
 
-public record AuditableValueListItemAdded<T>(
+public record AuditableValueValueListRangeInserted<T>(
     Ulid EventId,
     Ulid EntityId,
     Ulid FieldId,
     string FieldName,
     float EventVersion,
-    T Item,
+    ICollection<T> Items,
+    int Index,
     DateTimeOffset CreatedAtUtc
-    ) : IAuditableListDomainEvent;
+    ) : IAuditableValueListDomainEvent;

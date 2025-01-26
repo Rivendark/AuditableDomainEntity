@@ -1,29 +1,29 @@
-﻿using AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
+﻿using AuditableDomainEntity.Events.CollectionEvents.ListEvents.EntityListEvents;
 using AuditableDomainEntity.Interfaces;
 using AuditableDomainEntity.Interfaces.Collections;
 
 namespace AuditableDomainEntity.Collections.Lists;
 
-public sealed class AuditableValueList<T> : AuditableList<T>
+public sealed class AuditableEntityList<T> : AuditableList<T> where T : IAuditableChildEntity
 {
-    public static implicit operator AuditableValueList<T>(List<T> l) => new (l);
+    public static implicit operator AuditableEntityList<T>(List<T> l) => new (l);
     
-    public AuditableValueList()
+    public AuditableEntityList()
     {
         AddHydrateMethods();
     }
     
-    public AuditableValueList(int capacity) : base(capacity)
+    public AuditableEntityList(int capacity) : base(capacity)
     {
         AddHydrateMethods();
     }
     
-    public AuditableValueList(IEnumerable<T> items) : base(items)
+    public AuditableEntityList(IEnumerable<T> items) : base(items)
     {
         AddHydrateMethods();
     }
     
-    internal AuditableValueList(Ulid fieldId, IList<IAuditableValueListDomainEvent> events) : base(fieldId, events)
+    internal AuditableEntityList(Ulid fieldId, IList<IAuditableEntityListDomainEvent> events) : base(fieldId, events)
     {
         AddHydrateMethods();
         var orderedEvents = events.OrderBy(e => e.EventVersion).ToArray();
@@ -32,7 +32,7 @@ public sealed class AuditableValueList<T> : AuditableList<T>
             throw new ArgumentException("No events found");
         }
 
-        var initializedEvent = orderedEvents[0] as AuditableValueValueListInitialized<T>;
+        var initializedEvent = orderedEvents[0] as AuditableValueEntityListInitialized<T>;
         
         if (initializedEvent == null)
         {
@@ -83,9 +83,9 @@ public sealed class AuditableValueList<T> : AuditableList<T>
         foreach (var changeEvent in changeEvents)
         {
             Hydrate(changeEvent);
-            if (changeEvent is AuditableValueValueListInitialized<T> initializedChangeEvent)
+            if (changeEvent is AuditableValueEntityListInitialized<T> initializedChangeEvent)
             {
-                AddDomainEvent(new AuditableValueValueListInitialized<T>(
+                AddDomainEvent(new AuditableValueEntityListInitialized<T>(
                     Ulid.NewUlid(),
                     EntityId,
                     FieldId,
@@ -97,16 +97,16 @@ public sealed class AuditableValueList<T> : AuditableList<T>
         }
         IsInitialized = isInitialized;
     }
-    
+
     protected override void AddHydrateMethods()
     {
-        Hydrators.TryAdd(typeof(AuditableValueValueListInitialized<T>), e => Initialized((AuditableValueValueListInitialized<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListItemAdded<T>), e => ItemAdded((AuditableValueValueListItemAdded<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListRemoveAt<T>), e => ItemRemovedAt((AuditableValueValueListRemoveAt<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListCleared<T>), e => Cleared((AuditableValueValueListCleared<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListItemInserted<T>), e => ItemInserted((AuditableValueValueListItemInserted<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListRangeInserted<T>), e => RangeInserted((AuditableValueValueListRangeInserted<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListRangeRemoved<T>), e => RangeRemoved((AuditableValueValueListRangeRemoved<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueEntityListInitialized<T>), e => Initialized((AuditableValueEntityListInitialized<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueEntityListItemAdded<T>), e => ItemAdded((AuditableValueEntityListItemAdded<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueEntityListRemoveAt<T>), e => ItemRemovedAt((AuditableValueEntityListRemoveAt<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueEntityListCleared<T>), e => Cleared((AuditableValueEntityListCleared<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueEntityListItemInserted<T>), e => ItemInserted((AuditableValueEntityListItemInserted<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueEntityListRangeInserted<T>), e => RangeInserted((AuditableValueEntityListRangeInserted<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueEntityListRangeRemoved<T>), e => RangeRemoved((AuditableValueEntityListRangeRemoved<T>)e));
     }
 
     private void Hydrate(IDomainEvent domainEvent)
@@ -117,44 +117,45 @@ public sealed class AuditableValueList<T> : AuditableList<T>
         }
     }
     
-    private void Initialized(AuditableValueValueListInitialized<T> domainEvent)
+    private void Initialized(AuditableValueEntityListInitialized<T> domainEvent)
     {
         Items = domainEvent.Items.ToArray();
         Size = Items.Length;
+        // TODO pull entities from parent entity
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void ItemAdded(AuditableValueValueListItemAdded<T> domainEvent)
+    private void ItemAdded(AuditableValueEntityListItemAdded<T> domainEvent)
     {
         Add(domainEvent.Item);
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void ItemRemovedAt(AuditableValueValueListRemoveAt<T> domainEvent)
+    private void ItemRemovedAt(AuditableValueEntityListRemoveAt<T> domainEvent)
     {
         RemoveAt(domainEvent.Index);
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void Cleared(AuditableValueValueListCleared<T> domainEvent)
+    private void Cleared(AuditableValueEntityListCleared<T> domainEvent)
     {
         Clear();
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void ItemInserted(AuditableValueValueListItemInserted<T> domainEvent)
+    private void ItemInserted(AuditableValueEntityListItemInserted<T> domainEvent)
     {
         Insert(domainEvent.Index, domainEvent.Item);
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void RangeInserted(AuditableValueValueListRangeInserted<T> domainEvent)
+    private void RangeInserted(AuditableValueEntityListRangeInserted<T> domainEvent)
     {
         InsertRange(domainEvent.Index, domainEvent.Items);
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void RangeRemoved(AuditableValueValueListRangeRemoved<T> domainEvent)
+    private void RangeRemoved(AuditableValueEntityListRangeRemoved<T> domainEvent)
     {
         RemoveRange(domainEvent.Index, domainEvent.Count);
         EventVersion = domainEvent.EventVersion;

@@ -1,6 +1,5 @@
 ﻿using AuditableDomainEntity.Attributes;
 using AuditableDomainEntity.Collections.Lists;
-using AuditableDomainEntity.Events.CollectionEvents.ListEvents;
 using AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
 using AuditableDomainEntity.Events.EntityEvents;
 using AuditableDomainEntity.Events.ValueFieldEvents;
@@ -40,8 +39,8 @@ public class IntListCollectionValueFieldTests
         Assert.NotEmpty(auditableEntityCreated.ValueFieldEvents);
         Assert.Equal(7, auditableEntityCreated.ValueFieldEvents.Count);
         Assert.Equal(2, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueFieldInitialized<int[]>));
-        Assert.Equal(2, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueListInitialized<int>));
-        Assert.Equal(3, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueListItemAdded<int>));
+        Assert.Equal(2, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueValueListInitialized<int>));
+        Assert.Equal(3, auditableEntityCreated.ValueFieldEvents.Count(e => e is AuditableValueValueListItemAdded<int>));
         
         intListClass.Commit();
         
