@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("AuditableDomainEntity.Tests")]
+[assembly: InternalsVisibleTo("AuditableDomainEntity.UnitTests")]
 namespace AuditableDomainEntity;
 
 public static class Assembly

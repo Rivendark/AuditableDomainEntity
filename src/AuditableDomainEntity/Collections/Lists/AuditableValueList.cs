@@ -11,16 +11,55 @@ public sealed class AuditableValueList<T> : AuditableList<T>
     public AuditableValueList()
     {
         AddHydrateMethods();
+        AddDomainEvent(new AuditableValueListInitialized<T>(
+            Ulid.NewUlid(),
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
+            [],
+            DateTimeOffset.UtcNow));
     }
     
     public AuditableValueList(int capacity) : base(capacity)
     {
         AddHydrateMethods();
+        AddDomainEvent(new AuditableValueListInitialized<T>(
+            Ulid.NewUlid(),
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
+            [],
+            DateTimeOffset.UtcNow));
     }
     
     public AuditableValueList(IEnumerable<T> items) : base(items)
     {
         AddHydrateMethods();
+        switch (items)
+        {
+            case ICollection<T> c:
+                AddDomainEvent(new AuditableValueListInitialized<T>(
+                    Ulid.NewUlid(),
+                    EntityId,
+                    FieldId,
+                    FieldName,
+                    ++EventVersion,
+                    c.ToArray(),
+                    DateTimeOffset.UtcNow));
+                break;
+            default:
+                AddDomainEvent(new AuditableValueListInitialized<T>(
+                    Ulid.NewUlid(),
+                    EntityId,
+                    FieldId,
+                    FieldName,
+                    ++EventVersion,
+                    [],
+                    DateTimeOffset.UtcNow));
+                break;
+        }
     }
     
     internal AuditableValueList(Ulid fieldId, IList<IAuditableValueListDomainEvent> events) : base(fieldId, events)
@@ -32,7 +71,7 @@ public sealed class AuditableValueList<T> : AuditableList<T>
             throw new ArgumentException("No events found");
         }
 
-        var initializedEvent = orderedEvents[0] as AuditableValueValueListInitialized<T>;
+        var initializedEvent = orderedEvents[0] as AuditableValueListInitialized<T>;
         
         if (initializedEvent == null)
         {
@@ -83,9 +122,9 @@ public sealed class AuditableValueList<T> : AuditableList<T>
         foreach (var changeEvent in changeEvents)
         {
             Hydrate(changeEvent);
-            if (changeEvent is AuditableValueValueListInitialized<T> initializedChangeEvent)
+            if (changeEvent is AuditableValueListInitialized<T> initializedChangeEvent)
             {
-                AddDomainEvent(new AuditableValueValueListInitialized<T>(
+                AddDomainEvent(new AuditableValueListInitialized<T>(
                     Ulid.NewUlid(),
                     EntityId,
                     FieldId,
@@ -100,13 +139,87 @@ public sealed class AuditableValueList<T> : AuditableList<T>
     
     protected override void AddHydrateMethods()
     {
-        Hydrators.TryAdd(typeof(AuditableValueValueListInitialized<T>), e => Initialized((AuditableValueValueListInitialized<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListItemAdded<T>), e => ItemAdded((AuditableValueValueListItemAdded<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListRemoveAt<T>), e => ItemRemovedAt((AuditableValueValueListRemoveAt<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListCleared<T>), e => Cleared((AuditableValueValueListCleared<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListItemInserted<T>), e => ItemInserted((AuditableValueValueListItemInserted<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListRangeInserted<T>), e => RangeInserted((AuditableValueValueListRangeInserted<T>)e));
-        Hydrators.TryAdd(typeof(AuditableValueValueListRangeRemoved<T>), e => RangeRemoved((AuditableValueValueListRangeRemoved<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueListInitialized<T>), e => Initialized((AuditableValueListInitialized<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueListItemAdded<T>), e => ItemAdded((AuditableValueListItemAdded<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueListRemoveAt<T>), e => ItemRemovedAt((AuditableValueListRemoveAt<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueListCleared<T>), e => Cleared((AuditableValueListCleared<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueListItemInserted<T>), e => ItemInserted((AuditableValueListItemInserted<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueListRangeInserted<T>), e => RangeInserted((AuditableValueListRangeInserted<T>)e));
+        Hydrators.TryAdd(typeof(AuditableValueListRangeRemoved<T>), e => RangeRemoved((AuditableValueListRangeRemoved<T>)e));
+    }
+
+    protected override void AddItemAddedEvent(T item)
+    {
+        AddDomainEvent(new AuditableValueListItemAdded<T>(
+            Ulid.NewUlid(),
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
+            item,
+            DateTimeOffset.UtcNow));
+    }
+
+    protected override void AddItemRemovedAtEvent(int index)
+    {
+        AddDomainEvent(new AuditableValueListRemoveAt<T>(
+            Ulid.NewUlid(),
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
+            index,
+            DateTimeOffset.UtcNow));
+    }
+
+    protected override void AddItemInsertedEvent(int index, T item)
+    {
+        AddDomainEvent(new AuditableValueListItemInserted<T>(
+            Ulid.NewUlid(),
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
+            item,
+            index,
+            DateTimeOffset.UtcNow));
+    }
+
+    protected override void AddRangeInsertedEvent(int index, ICollection<T> items)
+    {
+        AddDomainEvent(new AuditableValueListRangeInserted<T>(
+            Ulid.NewUlid(),
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
+            items,
+            index,
+            DateTimeOffset.UtcNow));
+    }
+
+    protected override void AddRangeRemovedEvent(int index, int count)
+    {
+        AddDomainEvent(new AuditableValueListRangeRemoved<T>(
+            Ulid.NewUlid(),
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
+            index,
+            count,
+            DateTimeOffset.UtcNow));
+    }
+
+    protected override void AddClearedEvent()
+    {
+        AddDomainEvent(new AuditableValueListCleared<T>(
+            Ulid.NewUlid(),
+            EntityId,
+            FieldId,
+            FieldName,
+            ++EventVersion,
+            DateTimeOffset.UtcNow));
     }
 
     private void Hydrate(IDomainEvent domainEvent)
@@ -117,44 +230,44 @@ public sealed class AuditableValueList<T> : AuditableList<T>
         }
     }
     
-    private void Initialized(AuditableValueValueListInitialized<T> domainEvent)
+    private void Initialized(AuditableValueListInitialized<T> domainEvent)
     {
         Items = domainEvent.Items.ToArray();
         Size = Items.Length;
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void ItemAdded(AuditableValueValueListItemAdded<T> domainEvent)
+    private void ItemAdded(AuditableValueListItemAdded<T> domainEvent)
     {
         Add(domainEvent.Item);
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void ItemRemovedAt(AuditableValueValueListRemoveAt<T> domainEvent)
+    private void ItemRemovedAt(AuditableValueListRemoveAt<T> domainEvent)
     {
         RemoveAt(domainEvent.Index);
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void Cleared(AuditableValueValueListCleared<T> domainEvent)
+    private void Cleared(AuditableValueListCleared<T> domainEvent)
     {
         Clear();
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void ItemInserted(AuditableValueValueListItemInserted<T> domainEvent)
+    private void ItemInserted(AuditableValueListItemInserted<T> domainEvent)
     {
         Insert(domainEvent.Index, domainEvent.Item);
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void RangeInserted(AuditableValueValueListRangeInserted<T> domainEvent)
+    private void RangeInserted(AuditableValueListRangeInserted<T> domainEvent)
     {
         InsertRange(domainEvent.Index, domainEvent.Items);
         EventVersion = domainEvent.EventVersion;
     }
     
-    private void RangeRemoved(AuditableValueValueListRangeRemoved<T> domainEvent)
+    private void RangeRemoved(AuditableValueListRangeRemoved<T> domainEvent)
     {
         RemoveRange(domainEvent.Index, domainEvent.Count);
         EventVersion = domainEvent.EventVersion;

@@ -1,5 +1,4 @@
-﻿using AuditableDomainEntity.Events.CollectionEvents.ListEvents.ValueListEvents;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -26,15 +25,6 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
     protected AuditableList()
     {
         Items = SEmptyArray;
-        
-        AddDomainEvent(new AuditableValueValueListInitialized<T>(
-            Ulid.NewUlid(),
-            EntityId,
-            FieldId,
-            FieldName,
-            ++EventVersion,
-            [],
-            DateTimeOffset.UtcNow));
     }
 
     protected AuditableList(int capacity)
@@ -45,15 +35,6 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         }
         
         Items = capacity == 0 ? SEmptyArray : new T[capacity];
-        
-        AddDomainEvent(new AuditableValueValueListInitialized<T>(
-            Ulid.NewUlid(),
-            EntityId,
-            FieldId,
-            FieldName,
-            ++EventVersion,
-            [],
-            DateTimeOffset.UtcNow));
     }
 
     protected AuditableList(IEnumerable<T> collection)
@@ -75,15 +56,6 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
                     c.CopyTo(Items, 0);
                     Size = count;
                 }
-                
-                AddDomainEvent(new AuditableValueValueListInitialized<T>(
-                    Ulid.NewUlid(),
-                    EntityId,
-                    FieldId,
-                    FieldName,
-                    ++EventVersion,
-                    Items,
-                    DateTimeOffset.UtcNow));
 
                 break;
             }
@@ -96,15 +68,6 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
                 {
                     Add(item);
                 }
-                
-                AddDomainEvent(new AuditableValueValueListInitialized<T>(
-                    Ulid.NewUlid(),
-                    EntityId,
-                    FieldId,
-                    FieldName,
-                    ++EventVersion,
-                    [],
-                    DateTimeOffset.UtcNow));
 
                 break;
             }
@@ -203,14 +166,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         {
             AddWithResize(item);
         }
-        AddDomainEvent(new AuditableValueValueListItemAdded<T>(
-            Ulid.NewUlid(),
-            EntityId,
-            FieldId,
-            FieldName,
-            ++EventVersion,
-            item,
-            DateTimeOffset.UtcNow));
+        AddItemAddedEvent(item);
     }
     
     public void AddRange(IEnumerable<T> collection)
@@ -295,13 +251,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         {
             Size = 0;
         }
-        AddDomainEvent(new AuditableValueValueListCleared<T>(
-            Ulid.NewUlid(),
-            EntityId,
-            FieldId,
-            FieldName,
-            ++EventVersion,
-            DateTimeOffset.UtcNow));
+        AddClearedEvent();
     }
     
     // Contains returns true if the specified element is in the List.
@@ -406,15 +356,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         Size++;
         _version++;
         
-        AddDomainEvent(new AuditableValueValueListItemInserted<T>(
-            Ulid.NewUlid(),
-            EntityId,
-            FieldId,
-            FieldName,
-            ++EventVersion,
-            item,
-            index,
-            DateTimeOffset.UtcNow));
+        AddItemInsertedEvent(index, item);
     }
     
     void IList.Insert(int index, object? value)
@@ -480,15 +422,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
                 Size += count;
                 _version++;
                 
-                AddDomainEvent(new AuditableValueValueListRangeInserted<T>(
-                    Ulid.NewUlid(),
-                    EntityId,
-                    FieldId,
-                    FieldName,
-                    ++EventVersion,
-                    c,
-                    index,
-                    DateTimeOffset.UtcNow));
+                AddRangeInsertedEvent(index, c);
             }
         }
         else
@@ -553,15 +487,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
                 Array.Clear(Items, Size, count);
             }
             
-            AddDomainEvent(new AuditableValueValueListRangeRemoved<T>(
-                Ulid.NewUlid(),
-                EntityId,
-                FieldId,
-                FieldName,
-                ++EventVersion,
-                index,
-                count,
-                DateTimeOffset.UtcNow));
+            AddRangeRemovedEvent(index, count);
         }
     }
 
@@ -585,14 +511,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
         }
         _version++;
         
-        AddDomainEvent(new AuditableValueValueListRemoveAt<T>(
-            Ulid.NewUlid(),
-            EntityId,
-            FieldId,
-            FieldName,
-            ++EventVersion,
-            index,
-            DateTimeOffset.UtcNow));
+        AddItemRemovedAtEvent(index);
     }
     
     public List<T> Slice(int start, int length) => GetRange(start, length);
@@ -646,13 +565,7 @@ public abstract partial class AuditableList<T> : IList<T>, IList, IReadOnlyList<
             Size = 0;
         }
         
-        AddDomainEvent(new AuditableValueValueListCleared<T>(
-            Ulid.NewUlid(),
-            EntityId,
-            FieldId,
-            FieldName,
-            ++EventVersion,
-            DateTimeOffset.UtcNow));
+        AddClearedEvent();
     }
 
     // Copies this List into array, which must be of a

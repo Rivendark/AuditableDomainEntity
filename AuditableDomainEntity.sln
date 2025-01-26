@@ -2,7 +2,12 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuditableDomainEntity", "src/AuditableDomainEntity/AuditableDomainEntity.csproj", "{1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuditableDomainEntity.Tests", "tests/AuditableDomainEntity.Tests\AuditableDomainEntity.Tests.csproj", "{7E25E8F9-F442-4317-B947-B4E382C9D01F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuditableDomainEntity.UnitTests", "tests\AuditableDomainEntity.UnitTests\AuditableDomainEntity.UnitTests.csproj", "{7E25E8F9-F442-4317-B947-B4E382C9D01F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E} = {1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E}
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuditableDomainEntity.FunctionalTests", "AuditableDomainEntity.FunctionalTests\AuditableDomainEntity.FunctionalTests.csproj", "{21CB5BDB-6681-4A10-AB38-D673F3DA392E}"
 	ProjectSection(ProjectDependencies) = postProject
 		{1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E} = {1618BE54-A0D3-4FF0-A92E-7C5FD5DFB88E}
 	EndProjectSection
@@ -21,5 +26,9 @@ Global
 		{7E25E8F9-F442-4317-B947-B4E382C9D01F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7E25E8F9-F442-4317-B947-B4E382C9D01F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7E25E8F9-F442-4317-B947-B4E382C9D01F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21CB5BDB-6681-4A10-AB38-D673F3DA392E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21CB5BDB-6681-4A10-AB38-D673F3DA392E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21CB5BDB-6681-4A10-AB38-D673F3DA392E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21CB5BDB-6681-4A10-AB38-D673F3DA392E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

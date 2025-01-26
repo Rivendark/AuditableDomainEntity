@@ -65,7 +65,7 @@ public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditab
 
         var listEvents = domainEvents.OfType<IAuditableEntityListDomainEvent>().ToList();
         
-        _holder = new AuditableEntityList<T>(FieldId, listEvents);
+        _holder = new AuditableEntityList<T>(FieldId, listEvents, _childEntities);
         
         Hydrate();
 

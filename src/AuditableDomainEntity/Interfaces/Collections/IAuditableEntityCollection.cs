@@ -2,5 +2,5 @@
 
 public interface IAuditableEntityCollection
 {
-    public void AttachEntityList<T>(List<T> childEntities) where T : IAuditableChildEntity;
+    public void AttachEntityList(Dictionary<Ulid, IAuditableChildEntity> childEntities);
 }

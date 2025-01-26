@@ -62,7 +62,7 @@ public abstract partial class AuditableEntityBase
                 || domainEvent.ParentId != EntityId) continue;
             
             if (domainEvent is not AuditableEntityCreated auditableEntityCreated) continue;
-            if (Children.ContainsKey(auditableEntityCreated.EntityId)) continue;
+            if (ChildEntities.ContainsKey(auditableEntityCreated.EntityId)) continue;
                 
             // Create entity
             var childEntity = AuditableEntity.GenerateExistingEntity(auditableEntityCreated.EntityType, AggregateRootId, domainEvent.EntityId, events);
@@ -71,7 +71,7 @@ public abstract partial class AuditableEntityBase
                     $"Failed to generate child entity. EntityId: {domainEvent.EntityId}. " +
                     $"Type: {auditableEntityCreated.EntityType.Name}");
             
-            Children.TryAdd(childEntity.EntityId, childEntity);
+            ChildEntities.TryAdd(childEntity.EntityId, childEntity);
         }
         
         LoadPropertyHistory();
@@ -194,7 +194,7 @@ public abstract partial class AuditableEntityBase
                 var entityFieldWithHistory = AuditableFieldBase.GenerateExistingEntityField(
                     typeof(AuditableEntityField<>),
                     domainEvents,
-                    Children,
+                    ChildEntities,
                     property);
                 _entityFields.TryAdd(entityFieldWithHistory.FieldId, entityFieldWithHistory);
                 return;

@@ -15,7 +15,7 @@ public abstract partial class AuditableEntityBase
             events.AddRange(entityEvents);
         }
 
-        foreach (var entity in Children.Values.OfType<AuditableEntity>())
+        foreach (var entity in ChildEntities.Values.OfType<AuditableEntity>())
         {
             events.AddRange(entity.GetEntityChanges());
         }

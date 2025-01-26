@@ -50,4 +50,16 @@ public abstract partial class AuditableList<T> : IAuditableCollection<T>
     public abstract void SetParentFieldValues(Ulid entityId, Ulid fieldId, string fieldName);
     
     protected abstract void AddHydrateMethods();
+    
+    protected abstract void AddItemAddedEvent(T item);
+    
+    protected abstract void AddItemRemovedAtEvent(int index);
+    
+    protected abstract void AddItemInsertedEvent(int index, T item);
+    
+    protected abstract void AddRangeInsertedEvent(int index, ICollection<T> items);
+    
+    protected abstract void AddRangeRemovedEvent(int index, int count);
+    
+    protected abstract void AddClearedEvent();
 }

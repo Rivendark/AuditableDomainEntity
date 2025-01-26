@@ -1,6 +1,5 @@
 ﻿using AuditableDomainEntity.Events.EntityEvents;
 using AuditableDomainEntity.Interfaces;
-using AuditableDomainEntity.Interfaces.Fields;
 using AuditableDomainEntity.Interfaces.Fields.EntityFields;
 using AuditableDomainEntity.Interfaces.Fields.ValueFields;
 
@@ -76,7 +75,7 @@ public abstract class AuditableEntity : AuditableEntityBase, IAuditableChildEnti
     public void FinalizeChanges(AggregateRootId aggregateRootId)
     {
         FinalizeChangesInternal(aggregateRootId);
-        foreach (var entity in Children.Values)
+        foreach (var entity in ChildEntities.Values)
         {
             entity?.FinalizeChanges(aggregateRootId);
         }

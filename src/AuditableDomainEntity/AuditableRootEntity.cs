@@ -17,7 +17,7 @@ public abstract class AuditableRootEntity : AuditableEntityBase
     public void FinalizeChanges()
     {
         FinalizeChangesInternal(AggregateRootId);
-        foreach (var entity in Children.Values)
+        foreach (var entity in ChildEntities.Values)
         {
             entity?.FinalizeChanges(AggregateRootId);
         }

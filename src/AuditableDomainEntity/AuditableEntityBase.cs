@@ -14,7 +14,7 @@ public abstract partial class AuditableEntityBase
     protected Ulid? ParentEntityId { get; set; }
     protected Ulid? FieldId { get; set; }
     protected bool IsInitialized;
-    protected readonly Dictionary<Ulid, IAuditableChildEntity?> Children = new();
+    protected readonly Dictionary<Ulid, IAuditableChildEntity?> ChildEntities = new();
     protected float Version;
     private bool _isDirty;
     private readonly Dictionary<string, Ulid> _propertyIds = new();
@@ -47,7 +47,7 @@ public abstract partial class AuditableEntityBase
     {
         if (child == null) throw new NullReferenceException(nameof(child));
         child.Attach(EntityId, propertyName);
-        Children.TryAdd(child.GetEntityId(), child);
+        ChildEntities.TryAdd(child.GetEntityId(), child);
     }
 
     protected void SetValue<T>(T? value, string propertyName)
@@ -295,6 +295,8 @@ public abstract partial class AuditableEntityBase
         foreach (var property in properties)
         {
             var attributes = property.GetCustomAttributes().ToList();
+            if (attributes.Any(a => a is IAuditableEntityListFieldAttribute))
+                LoadEntityListField(property);
             if (attributes.Any(a => a is IAuditableValueListFieldAttribute))
                 LoadValueListField(property);
             if (attributes.Any(a => a is IAuditableValueFieldAttribute))
@@ -317,6 +319,18 @@ public abstract partial class AuditableEntityBase
             LoadValueField(property);
         
         return true;
+    }
+
+    private void LoadEntityListField(PropertyInfo property)
+    {
+        if (_propertyIds.ContainsKey(property.Name)) return;
+        
+        dynamic auditableDomainField = CreateFieldBase(
+            property,
+            typeof(AuditableListEntityField<>),
+            property.PropertyType.GenericTypeArguments[0],
+            ChildEntities);
+        _entityFields.TryAdd(auditableDomainField.FieldId, auditableDomainField);
     }
 
     private void LoadValueListField(PropertyInfo property)
@@ -359,6 +373,19 @@ public abstract partial class AuditableEntityBase
     {
         var contextType = fieldType.MakeGenericType(genericType);
         dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property)!;
+        _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
+
+        return auditableDomainField;
+    }
+    
+    private AuditableFieldBase CreateFieldBase(
+        PropertyInfo property,
+        Type fieldType,
+        Type genericType,
+        Dictionary<Ulid, IAuditableChildEntity?> childEntities)
+    {
+        var contextType = fieldType.MakeGenericType(genericType);
+        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property, childEntities)!;
         _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
 
         return auditableDomainField;
