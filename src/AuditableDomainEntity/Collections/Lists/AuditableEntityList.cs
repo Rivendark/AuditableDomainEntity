@@ -156,6 +156,7 @@ public sealed class AuditableEntityList<T> : AuditableList<T>, IAuditableEntityC
 
     protected override void AddItemAddedEvent(T item)
     {
+        _childEntities.TryAdd(item.GetEntityId(), item);
         AddDomainEvent(new AuditableEntityListItemAdded<T>(
             Ulid.NewUlid(),
             EntityId,
@@ -180,6 +181,7 @@ public sealed class AuditableEntityList<T> : AuditableList<T>, IAuditableEntityC
 
     protected override void AddItemInsertedEvent(int index, T item)
     {
+        _childEntities.TryAdd(item.GetEntityId(), item);
         AddDomainEvent(new AuditableEntityListItemInserted<T>(
             Ulid.NewUlid(),
             EntityId,
@@ -193,6 +195,10 @@ public sealed class AuditableEntityList<T> : AuditableList<T>, IAuditableEntityC
 
     protected override void AddRangeInsertedEvent(int index, ICollection<T> items)
     {
+        foreach (var childEntity in items)
+        {
+            _childEntities.TryAdd(childEntity.GetEntityId(), childEntity);
+        }
         AddDomainEvent(new AuditableEntityListRangeInserted<T>(
             Ulid.NewUlid(),
             EntityId,
@@ -302,6 +308,13 @@ public sealed class AuditableEntityList<T> : AuditableList<T>, IAuditableEntityC
 
     public void AttachEntityList(Dictionary<Ulid, IAuditableChildEntity> childEntities)
     {
+        if (_childEntities.Count > 0)
+        {
+            foreach (var childEntity in _childEntities)
+            {
+                childEntities.TryAdd(childEntity.Key, childEntity.Value);
+            }
+        }
         _childEntities = childEntities;
     }
 }

@@ -23,32 +23,38 @@ public class PersonDbo : AuditableRootEntity
     public int? Age
     {
         get => GetValue<int?>(nameof(Age));
-        set => SetValue<int?>(value, nameof(Age));
+        set => SetValue(value, nameof(Age));
+    }
+    
+    [AuditableEntityField<AddressDbo>(true)]
+    public AddressDbo? PrimaryAddress
+    {
+        get => GetEntity<AddressDbo?>(nameof(PrimaryAddress));
+        set => SetEntity<AddressDbo?>(value, nameof(PrimaryAddress));
     }
     
     [AuditableValueListField<string>(true)]
     public AuditableValueList<string>? Tags
     {
         get => GetValueList<string>(nameof(Tags));
-        set => SetValueList<string>(value, nameof(Tags));
+        set => SetValueList(value, nameof(Tags));
     }
     
     [AuditableEntityListField<AddressDbo>(true)]
     public AuditableEntityList<AddressDbo> Addresses
     {
         get => GetEntityList<AddressDbo>(nameof(Addresses));
-        set => SetEntityList<AddressDbo>(value, nameof(Addresses));
+        set => SetEntityList(value, nameof(Addresses));
     }
     
     [AuditableEntityListField<EmailDbo>(true)]
     public AuditableEntityList<EmailDbo> Emails
     {
         get => GetEntityList<EmailDbo>(nameof(Emails));
-        set => SetEntityList<EmailDbo>(value, nameof(Emails));
+        set => SetEntityList(value, nameof(Emails));
     }
     
-    public PersonDbo(AggregateRootId aggregateRootId)
-        : base(aggregateRootId)
-    {
-    }
+    public PersonDbo(AggregateRootId aggregateRootId) : base(aggregateRootId) { }
+    
+    public PersonDbo() : base(new AggregateRootId(Ulid.NewUlid(), typeof(PersonDbo))) { }
 }

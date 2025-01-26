@@ -72,7 +72,7 @@ public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditab
         Status = AuditableDomainFieldStatus.Initialized;
     }
     
-    public List<IAuditableChildEntity> Children => _childEntities.Values.ToList();
+    public Dictionary<Ulid,IAuditableChildEntity> Children => _childEntities;
     
     public override List<IDomainEvent> GetChanges()
     {
@@ -177,6 +177,8 @@ public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditab
                 _holder.AddRange(list.ToArray());
                 list.SetAsReadOnly();
             }
+            
+            _holder.AttachEntityList(_childEntities);
             return _holder;
         }
         
@@ -186,6 +188,7 @@ public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditab
 
         _holder = list;
 
+        _holder.AttachEntityList(_childEntities);
         return list;
     }
 }
