@@ -117,6 +117,12 @@ public abstract partial class AuditableEntityBase
         var properties = EntityType.GetProperties();
         foreach (var property in properties)
         {
+            if (CheckHasAttribute(property, typeof(IAuditableEntityListFieldAttribute)))
+            {
+                LoadEntityListFieldHistory(property);
+                continue;
+            }
+            
             if (CheckHasAttribute(property, typeof(IAuditableValueListFieldAttribute)))
             {
                 LoadValueListFieldHistory(property);
@@ -209,6 +215,32 @@ public abstract partial class AuditableEntityBase
         _entityFields.TryAdd(entityFieldNew.FieldId, entityFieldNew);
     }
     
+    private void LoadEntityListFieldHistory(PropertyInfo property)
+    {
+        if (_propertyIds.TryGetValue(property.Name, out var fieldId))
+        {
+            if (_entityFieldEvents.TryGetValue(fieldId, out var domainEvents))
+            {
+                var valueFieldWithHistory = AuditableFieldBase.GenerateExistingListEntityField(
+                    typeof(AuditableListEntityField<>),
+                    domainEvents,
+                    ChildEntities,
+                    property);
+                _entityFields.TryAdd(valueFieldWithHistory.FieldId, valueFieldWithHistory);
+                return;
+            }
+        }
+        
+        var valueFieldNew = AuditableFieldBase.GenerateNewField(
+            typeof(AuditableListEntityField<>),
+            property.PropertyType.GenericTypeArguments[0],
+            EntityId,
+            property);
+        
+        _propertyIds.Add(valueFieldNew.Name, valueFieldNew.FieldId);
+        _entityFields.TryAdd(valueFieldNew.FieldId, valueFieldNew);
+    }
+    
     private static bool CheckHasAttribute(PropertyInfo property, Type attributeInterface)
     {
         var hasAttribute = new Dictionary<Type, bool>();
@@ -224,6 +256,10 @@ public abstract partial class AuditableEntityBase
         var hasEntityFieldAttribute = property.GetCustomAttributes()
             .Any(a => a is IAuditableEntityFieldAttribute);
         hasAttribute.Add(typeof(IAuditableEntityFieldAttribute), hasEntityFieldAttribute);
+        
+        var hasEntityListFieldAttribute = property.GetCustomAttributes()
+            .Any(a => a is IAuditableEntityListFieldAttribute);
+        hasAttribute.Add(typeof(IAuditableEntityListFieldAttribute), hasEntityListFieldAttribute);
         
         if (hasAttribute.Count(a => a.Value) > 1)
             throw new InvalidOperationException($"Property {property.Name} has more than one AuditableFieldType attribute.");

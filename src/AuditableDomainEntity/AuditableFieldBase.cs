@@ -87,12 +87,23 @@ public abstract class AuditableFieldBase
     public static dynamic GenerateExistingEntityField(
         Type fieldType,
         List<IDomainEntityFieldEvent> domainEvents,
-        Dictionary<Ulid, IAuditableChildEntity?> auditableEntities,
+        Dictionary<Ulid, IAuditableChildEntity?> auditableChildEntities,
         PropertyInfo property)
     {
         if (!fieldType.IsGenericType) throw new ArgumentException("Field type must be a generic type", nameof(fieldType));
         var contextType = fieldType.MakeGenericType(property.PropertyType);
-        return Activator.CreateInstance(contextType, domainEvents, auditableEntities, property)!;
+        return Activator.CreateInstance(contextType, domainEvents, auditableChildEntities, property)!;
+    }
+    
+    public static dynamic GenerateExistingListEntityField(
+        Type fieldType,
+        List<IDomainEntityFieldEvent> domainEvents,
+        Dictionary<Ulid, IAuditableChildEntity?> auditableChildEntities,
+        PropertyInfo property)
+    {
+        if (!fieldType.IsGenericType) throw new ArgumentException("Field type must be a generic type", nameof(fieldType));
+        var contextType = fieldType.MakeGenericType(property.PropertyType.GenericTypeArguments[0]);
+        return Activator.CreateInstance(contextType, domainEvents, auditableChildEntities, property)!;
     }
 
     protected void SetEvents(List<IDomainEvent> domainEvents)

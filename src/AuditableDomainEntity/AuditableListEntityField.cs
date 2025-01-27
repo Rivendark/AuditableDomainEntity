@@ -23,8 +23,8 @@ public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditab
     public AuditableListEntityField(
         Ulid fieldId,
         Ulid entityId,
-        PropertyInfo property,
-        Dictionary<Ulid, IAuditableChildEntity> childEntities)
+        Dictionary<Ulid, IAuditableChildEntity> childEntities,
+        PropertyInfo property)
         : base(fieldId, entityId, property, AuditableDomainFieldType.EntityCollection)
     {
         FieldType = typeof(T);
@@ -33,8 +33,8 @@ public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditab
     
     public AuditableListEntityField(
         Ulid entityId,
-        PropertyInfo property,
-        Dictionary<Ulid, IAuditableChildEntity> childEntities)
+        Dictionary<Ulid, IAuditableChildEntity> childEntities,
+        PropertyInfo property)
         : base(entityId, property, AuditableDomainFieldType.EntityCollection)
     {
         FieldType = typeof(T);
@@ -43,8 +43,8 @@ public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditab
     
     public AuditableListEntityField(
         List<IDomainEntityFieldEvent> domainEvents,
-        PropertyInfo property,
-        Dictionary<Ulid, IAuditableChildEntity> childEntities)
+        Dictionary<Ulid, IAuditableChildEntity> childEntities,
+        PropertyInfo property)
     {
         _childEntities = childEntities;
         var initializedEvent = domainEvents.FirstOrDefault(x => x is AuditableEntityFieldInitialized<T[]>);
@@ -184,11 +184,11 @@ public class AuditableListEntityField<T> : AuditableFieldBase where T : IAuditab
         
         list ??= [];
         
+        list.AttachEntityList(_childEntities);
         list.SetParentFieldValues(EntityId, FieldId, Name);
 
         _holder = list;
-
-        _holder.AttachEntityList(_childEntities);
+        
         return list;
     }
 }

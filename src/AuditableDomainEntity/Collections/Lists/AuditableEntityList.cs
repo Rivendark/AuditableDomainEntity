@@ -156,6 +156,8 @@ public sealed class AuditableEntityList<T> : AuditableList<T>, IAuditableEntityC
 
     protected override void AddItemAddedEvent(T item)
     {
+        item.SetParentEntityId(EntityId);
+        item.SetFieldId(FieldId);
         _childEntities.TryAdd(item.GetEntityId(), item);
         AddDomainEvent(new AuditableEntityListItemAdded<T>(
             Ulid.NewUlid(),
@@ -181,6 +183,8 @@ public sealed class AuditableEntityList<T> : AuditableList<T>, IAuditableEntityC
 
     protected override void AddItemInsertedEvent(int index, T item)
     {
+        item.SetParentEntityId(EntityId);
+        item.SetFieldId(FieldId);
         _childEntities.TryAdd(item.GetEntityId(), item);
         AddDomainEvent(new AuditableEntityListItemInserted<T>(
             Ulid.NewUlid(),
@@ -197,6 +201,8 @@ public sealed class AuditableEntityList<T> : AuditableList<T>, IAuditableEntityC
     {
         foreach (var childEntity in items)
         {
+            childEntity.SetParentEntityId(EntityId);
+            childEntity.SetFieldId(FieldId);
             _childEntities.TryAdd(childEntity.GetEntityId(), childEntity);
         }
         AddDomainEvent(new AuditableEntityListRangeInserted<T>(

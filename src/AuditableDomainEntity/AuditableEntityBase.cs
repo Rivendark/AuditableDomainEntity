@@ -385,7 +385,7 @@ public abstract partial class AuditableEntityBase
         Dictionary<Ulid, IAuditableChildEntity?> childEntities)
     {
         var contextType = fieldType.MakeGenericType(genericType);
-        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, property, childEntities)!;
+        dynamic auditableDomainField = Activator.CreateInstance(contextType, EntityId, childEntities, property)!;
         _propertyIds.Add(auditableDomainField.Name, auditableDomainField.FieldId);
 
         return auditableDomainField;
